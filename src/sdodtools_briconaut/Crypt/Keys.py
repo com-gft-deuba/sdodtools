@@ -28,7 +28,7 @@ class KeyIV:
 
     @classmethod
     def from_password(cls, password, *args, salt=None, key_length=64, iv_length=32, count=200000, **kwargs):
-
+  
         if salt is None:
 
             salt = ''.join(random.choice(cls.ALPHABET) for i in range(16))
@@ -88,10 +88,13 @@ class KeyIV:
 
         cmd = subprocess.Popen(args=['openssl', 'enc', '-a', '-aes-256-cbc', '-K', self.key.decode(), '-iv', self.iv.decode()], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=False)
         (stdout, stderr) = cmd.communicate(input=data)
+
         return cmd.returncode, stdout, stderr
 
     def decrypt(self, data):
 
+        data += b'\n'
         cmd = subprocess.Popen(args=['openssl', 'enc', '-d', '-a', '-aes-256-cbc', '-K', self.key.decode(), '-iv', self.iv.decode()], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=False)
         (stdout, stderr) = cmd.communicate(input=data)
+
         return cmd.returncode, stdout, stderr

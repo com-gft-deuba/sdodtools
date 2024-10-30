@@ -10,23 +10,19 @@ class SecretFactory:
 
     RE_FILEPATTERN = re.compile(r'^(?P<domain>[^_.]+)_(?P<name>[^_.]+)\.(?P<category>[^_.]+)')
     KEY_PREFIX = '.secret'
-    FileInfo = collections.namedtuple('FileInfo', ['domain', 'name', 'category', 'filename'])
+    FileInfo = collections.namedtuple('FileInfo', ['domain', 'name', 'category', 'path', 'filename'])
 
     @classmethod
     def from_bytes(cls, b, key=None):
 
         idx_start = b.find(b'<')
 
-        if idx_start < 0 :
-            
-            return None, b
+        if idx_start < 0: return None, b
 
         idx_stop = b.find(b'>', idx_start ) 
         secret_class = b[idx_start+1:idx_stop].decode()
 
-        if secret_class.startswith('__main__.'):
-
-            secret_class = secret_class[9:]
+        if secret_class.startswith('__main__.'): secret_class = secret_class[9:]
 
         if secret_class.find('.') >= 0:
 
@@ -41,7 +37,7 @@ class SecretFactory:
         return secret_class.from_bytes(b[idx_start:], key=key)
 
     @classmethod
-    def save(cls, secret, overwrite=False, basedir=None, prefix=None) -> None:
+    def save(cls, secret, overwrite=False, basedir=None, prefix=None) -> str:
 
         if secret is None: return
 
@@ -57,15 +53,17 @@ class SecretFactory:
 
             f.write(bytes(secret))
 
-    @classmethod
-    def load(cls, filename):
+        return filename
 
-        if not isinstance(filename, str): filename = filename.filename
+    @classmethod
+    def load(cls, filename, key=None):
+
+        if not isinstance(filename, str): filename = filename.path
 
         with open(filename, "rb") as f:
 
             content = f.read()
-            secret, rest = SecretFactory.from_bytes(content)
+            secret, rest = SecretFactory.from_bytes(content, key=key)
 
             return secret
 
@@ -76,23 +74,33 @@ class SecretFactory:
 
         if prefix is None: prefix = cls.KEY_PREFIX
 
+        if prefix is None:
+
+            _prefix = ''
+
+        else:
+
+            _prefix = prefix + '-'
+
         infos = []
 
-        for root, dirs, files in os.walk(basedir):
+        for obj in os.listdir(basedir):
 
-            for file in files:
+            if not obj.startswith(_prefix): continue
 
-                if not file.startswith(prefix): continue
-                filename = file[len(prefix)+1:]
+            filename = os.path.join(basedir, obj)
 
-                matches = cls.RE_FILEPATTERN.match(filename)
+            if not os.path.isfile(filename): continue
 
-                if matches is None: continue
+            fileid = obj[len(_prefix):]
 
-                filename = os.path.join(basedir, file)
-                info = cls.FileInfo(domain=matches.group('domain'), name=matches.group('name'), category=matches.group('category'), filename=filename)
+            matches = cls.RE_FILEPATTERN.match(fileid)
 
-                infos.append(info)
+            if matches is None: continue
+
+            info = cls.FileInfo(domain=matches.group('domain'), name=matches.group('name'), category=matches.group('category'), path=filename, filename=obj)
+
+            infos.append(info)
 
         return infos
 
@@ -112,6 +120,7 @@ class Container:
         idx_stop = b.find(b']') 
         domain, name, category = b[:idx_stop].split(b"|")
         secret, rest = SecretFactory.from_bytes(b[idx_stop + 1:], key=key)
+
         return cls(domain=domain.decode(), name=name.decode(), category=category.decode(), secret=secret), rest
 
     def __init__(self, secret, domain, name, category, *args, **argv) -> None:
@@ -126,9 +135,17 @@ class Container:
 
         return f'{self._class_signature}[{self.domain}|{self.name}|{self.category}]'.encode() + bytes(self.secret)
 
+    def _as_clear_bytes(self) -> str:
+
+        return f'{self._class_signature}[{self.domain}|{self.name}|{self.category}]'.encode() + self.secret._as_clear_bytes()
+
     def __str__(self) -> str:
 
         return '{sig}[{domain}|{name}|{category}]{secret}'.format(sig=self._class_signature, domain=self.domain, name=self.name,category=self.category,secret=str(self.secret))
+
+    def _as_clear_str(self) -> str:
+
+        return '{sig}[{domain}|{name}|{category}]{secret}'.format(sig=self._class_signature, domain=self.domain, name=self.name,category=self.category,secret=self.secret._as_clear_str())
 
     def __repr__(self) -> str:
 
@@ -189,13 +206,19 @@ class Secret:
                 if key is not None:
 
                     r, value, stderr = key.encrypt(value)
+                    r = Cli.Utils.CliException.from_result(message='Failed to encrypt bytes.', r=r, cmd=None, stdout=value, stderr=stderr)
 
-                    if r != 0: raise Cli.Utils.get_cli_exception(message='Failed to encrypt bytes.', r=r, stdout=value, stderr=stderr)
+                    if r is not None: raise r
 
             values[keyword] = value
 
-        return cls(key=key, **values)
+        secret = cls(key=key, **values)
 
+        if 'domain' in argv and 'name' in argv and 'category' in argv:
+
+            return Container(secret=secret, domain=argv['domain'], name=argv['name'], category=argv['category'])
+
+        return secret
     def __init__(self, key, **argv) -> None:
 
         self.__dict__['key'] = key
@@ -236,8 +259,9 @@ class Secret:
         if self.__dict__[basename] is None: return None
     
         r, stdout, stderr = self.key.decrypt(self.__dict__[basename])
+        r = Cli.Utils.CliException.from_result(message='Failed to encrypt bytes.', r=r, cmd=None, stdout=stdout, stderr=stderr)
 
-        if r != 0: raise Cli.Utils.get_cli_exception(message=f"Failed to decrypt '{basename}'", r=r, stdout=stdout, stderr=stderr)
+        if r is not None: raise r
 
         return stdout
 
@@ -303,6 +327,34 @@ class Secret:
     def __bytes__(self) -> str:
 
         values = [getattr(self, x) for x in self.KEYWORDS ]
+        msg = b'|'.join(values)
+
+        return self._class_signature.encode() + b'[' + msg + b']'
+
+    def _as_clear_str(self) -> str:
+
+        if self.key is not None:
+            
+            values = [ self.key.decrypt(getattr(self, x))[1].decode() for x in self.KEYWORDS ]
+
+        else:
+
+            values = [getattr(self, x).replace(b'\n', b'').decode() for x in self.KEYWORDS ]
+
+        msg = '|'.join(values)
+
+        return f'{self._class_signature}[{msg}]'
+
+    def _as_clear_bytes(self) -> str:
+
+        if self.key is not None:
+
+            values = [self.key.decrypt(getattr(self, x))[1] for x in self.KEYWORDS ]
+
+        else:
+
+            values = [getattr(self, x) for x in self.KEYWORDS ]
+
         msg = b'|'.join(values)
 
         return self._class_signature.encode() + b'[' + msg + b']'

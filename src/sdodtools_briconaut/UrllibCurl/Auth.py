@@ -8,81 +8,59 @@
 ##############################################################################
 ##############################################################################
 
-class AuthNone:
+class Auth:
 
-    def __init__(self) -> None:
-
-        pass
+    def __init__(self, secret) -> None: self.secret = secret
 
     def options(self): return []
 
-class AuthLogin:
+class AuthNone(Auth):
 
-    def __init__(self, login) -> None:
+    def __init__(self, secret=None) -> None: super().__init__(secret=secret)
 
-        self.login = login
+class AuthLogin(Auth):
 
-    def options(self): return ["--basic", "--user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
+    def options(self): return ["--basic", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
 
-class AuthDigest:
-
-    def __init__(self, login) -> None:
-
-        self.login = login
+class AuthDigest(AuthLogin):
 
     def options(self): return ["--digest", "--user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
 
-class AuthNTLM:
+class AuthNTLM(AuthLogin):
 
-    def __init__(self, login) -> None:
+    def options(self): return ["--ntlm", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
 
-        self.login = login
+class AuthCookie(Auth):
 
-    def options(self): return ["--ntlm", "--user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
-
-class AuthCookie:
-
-    def __init__(self, cookie) -> None:
-        self.login = cookie
-
-    def options(self): return ["--header", f"{self.cookie.header.decode()}: {self.cookie.value.decode()}"]
+    def options(self): return ["--header", f"{self.secret.header.decode()}: {self.secret.value.decode()}"]
 
 ##############################################################################
 ##############################################################################
 
-class ProxyAuthNone:
+class ProxyAuth:
 
-    def __init__(self) -> None:
-        
-        pass
+    def __init__(self, secret) -> None:
+
+        self.secret = secret
 
     def options(self): return []
 
-class ProxyAuthLogin:
+class ProxyAuthNone(ProxyAuth):
 
-    def __init__(self, login) -> None:
-        self.login = login
+    def __init__(self, secret=None) -> None: super().__init__(secret=secret)
 
-    def options(self): return ["--proxy-basic", "--proxy-user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
+class ProxyAuthLogin(ProxyAuth):
 
-class ProxyAuthDigest:
+    def options(self): return ["--proxy-basic", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
 
-    def __init__(self, login) -> None:
-        self.login = login
+class ProxyAuthDigest(ProxyAuthLogin):
 
     def options(self): return ["--proxy-digest", "--proxy-user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
 
-class ProxyAuthNTLM:
+class ProxyAuthNTLM(ProxyAuthLogin):
 
-    def __init__(self, login) -> None:
-        self.login = login
+    def options(self): return ["--proxy-ntlm", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
 
-    def options(self): return ["--proxy-ntlm", "--proxy-user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
+class ProxyAuthCookie(ProxyAuth):
 
-class ProxyAuthCookie:
-
-    def __init__(self, cookie) -> None:
-        self.login = cookie
-
-    def options(self): return ["--proxy-header", f"{self.cookie.header.decode()}: {self.cookie.value.decode()}"]
-
+    def options(self): return ["--proxy-header", f"{self.secret.header.decode()}: {self.secret.value.decode()}"]

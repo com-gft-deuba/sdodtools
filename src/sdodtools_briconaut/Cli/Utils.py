@@ -28,3 +28,5 @@ class CliException(subprocess.CalledProcessError):
         self.r = r
         self.stdout = stdout
         self.stderr = stderr
+
+    def __str__(self): return self.message
