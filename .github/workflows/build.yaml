@@ -12,8 +12,36 @@ on:
         type: string
 
 jobs:
+
+  check_version:
+    runs-on: "ubuntu-latest"
+    outputs:
+      release_ype: ${{ steps.check-valid-version.outputs.release_type }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check for valid version format
+        id: check-valid-version
+        shell: bash
+        run: |
+          if [[ '${{input.tag}}' == 'dry-run' ]]; then
+            echo "Found 'dry-run' tag."
+            echo "release_type='dry-run'" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ ! '${{input.tag}}' =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: '${{input.tag}}'"
+            echo "release_type='error'" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "Found valid version format: '${{input.tag}}'
+          echo "release_type='full'" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: "ubuntu-latest"
+    needs: check_version
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
@@ -21,10 +49,18 @@ jobs:
       version: ${{ steps.determine-version.outputs.version }}
     steps:
       - name: Checkout HEAD
+        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
+      - name: Checkout TAG
+        uses: actions/checkout@v4
+        if: ${{ always() && needs.check_version.outputs.release_type == 'dry-run' }}
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          ref: refs/tags/${{ inputs.tag }}
       - name: Set up Python
         id: setup-python
         uses: actions/setup-python@v5
@@ -50,7 +86,7 @@ jobs:
         shell: bash
         run: |
           env | sort | grep -i dist
-          read version < <( echo "$distribution" | sed -n 's/.*?-\(.*\).tar.gz$/\1/p' )
+          read version < <( echo "$distribution" | sed -n 's/.*-\(.*\).tar.gz$/\1/p' )
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_ENV"
           echo "$version" dist/VERSION
