@@ -14,7 +14,6 @@ on:
 jobs:
   build:
     runs-on: "ubuntu-latest"
-    if: ${{ always() && ( needs.check_version.outputs.release_type == 'full' || needs.check_version.outputs.release_type == 'dry-run' ) }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
