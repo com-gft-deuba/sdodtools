@@ -16,7 +16,7 @@ jobs:
   check_version:
     runs-on: "ubuntu-latest"
     outputs:
-      release_ype: ${{ steps.check-valid-version.outputs.release_type }}
+      release_type: ${{ steps.check-valid-version.outputs.release_type }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -25,18 +25,18 @@ jobs:
         shell: bash
         run: |
           if [[ '${{inputs.tag}}' == 'dry-run' ]]; then
-            echo "Found 'dry-run' tag."
+            echo "Found 'dry-run' tag. Setting release type 'dry-run'."
             echo "release_type='dry-run'" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [[ ! '${{inputs.tag}}' =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version format: '${{inputs.tag}}'"
+            echo "Invalid version format: '${{inputs.tag}}'. Setting release type 'error'."
             echo "release_type='error'" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "Found valid version format: '${{inputs.tag}}'
+          echo "Found valid version format '${{inputs.tag}}'  Setting release type 'full'.
           echo "release_type='full'" >> "$GITHUB_OUTPUT"
 
   build:
