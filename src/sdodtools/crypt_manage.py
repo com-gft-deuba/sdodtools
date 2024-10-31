@@ -185,7 +185,7 @@ def main(argv=None):
 
                     secret = container
 
-            if args.decrypt:
+            if 'decrypt' in args and args.decrypt:
 
                 try:
 
