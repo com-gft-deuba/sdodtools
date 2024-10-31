@@ -49,14 +49,14 @@ jobs:
       version: ${{ steps.determine-version.outputs.version }}
     steps:
       - name: Checkout HEAD
-        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        if: ${{ always() && needs.check_version.outputs.release_type == 'dry-run' }}
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
       - name: Checkout TAG
         uses: actions/checkout@v4
-        if: ${{ always() && needs.check_version.outputs.release_type == 'dry-run' }}
+        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
         with:
           submodules: recursive
           fetch-depth: 1
