@@ -1,0 +1,74 @@
+name: Build
+permissions:
+  "contents": "write"
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release Tag
+        required: true
+        default: dry-run
+        type: string
+
+jobs:
+  build:
+    runs-on: "ubuntu-latest"
+    if: ${{ always() && ( needs.check_version.outputs.release_type == 'full' || needs.check_version.outputs.release_type == 'dry-run' ) }}
+    needs:
+      - check_version
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      distribution: ${{ steps.determine-distribution.outputs.distribution }}
+      version: ${{ steps.determine-version.outputs.version }}
+    steps:
+      - name: Checkout HEAD
+        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+      - name: Checkout TAG
+        uses: actions/checkout@v4
+        if: ${{ always() && needs.check_version.outputs.release_type == 'dry-run' }}
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          ref: refs/tags/${{ inputs.tag }}
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.6'
+      - name: Install build dependencies
+        id: install-depenencies
+        shell: bash
+        run: python3 -m pip install --upgrade pip setuptools wheel build virtualenv
+      - name: Build
+        id: build
+        shell: bash
+        run: python -m build --sdist .
+      - name: Determine distribution
+        id: determine-distribution
+        shell: bash
+        run: |
+          read distribution < <( cd dist && ls -1 *.tar.gz | head -1 )
+          echo "distribution='$distribution'" >> "$GITHUB_OUTPUT"
+      - name: Determine version
+        id: determine-version
+        shell: bash
+        run: |
+          read version < <( echo "$distribution" | sed -n 's/.*?-\(.*\).tar.gz$/\1/p' )
+          echo "version='$version'" >> "$GITHUB_OUTPUT"
+          echo "$version" dist/VERSION
+      - name: "Upload artifacts"
+        id: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution
+          if-no-files-found: error
+          retention-days: 2
+          path: |
+            dist/${{ steps.determine-distribution.outputs.distribution }}
+            dist/VERSION
