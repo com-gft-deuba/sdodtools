@@ -3,22 +3,22 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
+dynamic = ["version"]
 name = "sdodtools_briconaut"
-version = "0.0.1"
+description = "A set of small helpers to overcome SDOD limitations."
 authors = [
   { name="briconaut", email="briconaut@gmx.de" },
 ]
-description = "A set of small helpers to overcome SDOD limitations."
 readme = "README.md"
-license = "LICENSE"
+license = { file = "LICENSE" }
 requires-python = ">=3.6"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
 
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.6",
 
   "Operating System :: GIT bash",
@@ -31,4 +31,9 @@ Repository = "https://github.com/com-gft-deuba/sdodtools.git"
 Issues = "https://github.com/com-gft-deuba/sdodtools/issues"
 
 [project.scripts]
-crypt_manage ="sdodtools:crypt_manage"
+crypt_manage ="sdodtools.crypt_manage:main"
+
+[tool.setuptools]
+
+[tool.setuptools.dynamic]
+version = { attr = "sdodtools.__version__" }
