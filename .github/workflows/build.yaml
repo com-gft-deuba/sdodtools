@@ -48,7 +48,7 @@ jobs:
         id: determine-version
         shell: bash
         run: |
-          read version < <( echo "$distribution" | sed -n 's/.*?-\(.*\).tar.gz$/\1/p' )
+          read version < <( echo "${{ env.distribution }}" | sed -n 's/.*?-\(.*\).tar.gz$/\1/p' )
           echo "version='$version'" >> "$GITHUB_OUTPUT"
           echo "$version" dist/VERSION
       - name: "Upload artifacts"
