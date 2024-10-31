@@ -20,6 +20,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+    
       - name: Check for valid version format
         id: check-valid-version
         shell: bash
