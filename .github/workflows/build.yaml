@@ -24,19 +24,19 @@ jobs:
         id: check-valid-version
         shell: bash
         run: |
-          if [[ '${{input.tag}}' == 'dry-run' ]]; then
+          if [[ '${{inputs.tag}}' == 'dry-run' ]]; then
             echo "Found 'dry-run' tag."
             echo "release_type='dry-run'" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [[ ! '${{input.tag}}' =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version format: '${{input.tag}}'"
+          if [[ ! '${{inputs.tag}}' =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: '${{inputs.tag}}'"
             echo "release_type='error'" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "Found valid version format: '${{input.tag}}'
+          echo "Found valid version format: '${{inputs.tag}}'
           echo "release_type='full'" >> "$GITHUB_OUTPUT"
 
   build:
