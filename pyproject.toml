@@ -3,20 +3,32 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sdodtools_tsbo"
+name = "sdodtools_briconaut"
 version = "0.0.1"
 authors = [
-  { name="Thomas Brunko", email="thomas.brunko@gmail.com" },
+  { name="briconaut", email="briconaut@gmx.de" },
 ]
 description = "A set of small helpers to overcome SDOD limitations."
 readme = "README.md"
+license = "LICENSE"
 requires-python = ">=3.6"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+
+  "Operating System :: GIT bash",
 ]
+keywords = [ "sdod", "proxy", "curl" ]
 
 [project.urls]
-Homepage = "https://github.com/tsbo/sdodtools"
-; Issues = "https://github.com/pypa/sampleproject/issues"
+Homepage = "https://github.com/com-gft-deuba/sdodtools"
+Repository = "https://github.com/com-gft-deuba/sdodtools.git"
+Issues = "https://github.com/com-gft-deuba/sdodtools/issues"
+
+[project.scripts]
+crypt_manage ="sdodtools:crypt_manage"
