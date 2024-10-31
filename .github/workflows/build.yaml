@@ -16,7 +16,7 @@ jobs:
   check_version:
     runs-on: "ubuntu-latest"
     outputs:
-      release_type: ${{ steps.check-valid-version.outputs.release_type }}
+      release_type: ${{ steps.set-output.outputs.release_type }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -24,20 +24,52 @@ jobs:
         id: check-valid-version
         shell: bash
         run: |
+
           if [[ '${{inputs.tag}}' == 'dry-run' ]]; then
             echo "Found 'dry-run' tag. Setting release type 'dry-run'."
-            echo "release_type=dry-run" >> "$GITHUB_OUTPUT"
+            echo "release_type=dry-run" >> "$GITHUB_ENV"
             exit 0
           fi
 
           if [[ ! '${{inputs.tag}}' =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid version format: '${{inputs.tag}}'. Setting release type 'error'."
-            echo "release_type=error" >> "$GITHUB_OUTPUT"
+            echo "release_type=error" >> "$GITHUB_ENV"
             exit 1
           fi
 
           echo "Found valid version format '${{inputs.tag}}'  Setting release type 'full'.
-          echo "release_type=full" >> "$GITHUB_OUTPUT"
+          echo "release_type=full" >> "$GITHUB_ENV"
+
+      - name: Checkout HEAD
+        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          fetch-tags: true
+
+      - name: Check if tag exists
+        id: install-depenencies
+        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        shell: bash
+        run: |
+          set +e
+          git show-refs "refs/tags/${{ inputs.tag }}"
+          status=$?
+
+          if [[ $status -ne 0 ]]; then
+            echo "Tag not found: '${{ inputs.tag }}'. Setting release type 'error'."
+            echo "release_type=error" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          echo "Tag found: '${{ inputs.tag }}'. Keeping release type 'full'."
+
+      - name: Set output
+        id: set-output
+        shell: bash
+        run: |
+            echo "release_type=$release_type" >> "$GITHUB_OUTPUT"
 
   build:
     runs-on: "ubuntu-latest"
