@@ -20,7 +20,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-    
+
       - name: Check for valid version format
         id: check-valid-version
         shell: bash
@@ -42,7 +42,8 @@ jobs:
           echo "release_type=full" >> "$GITHUB_ENV"
 
       - name: Checkout HEAD
-        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        id: checkout-head
+        if: ${{ always() && env.release_type == 'full' }}
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -50,8 +51,8 @@ jobs:
           fetch-tags: true
 
       - name: Check if tag exists
-        id: install-depenencies
-        if: ${{ always() && needs.check_version.outputs.release_type == 'full' }}
+        id: check-tag
+        if: ${{ always() && env.release_type == 'full' }}
         shell: bash
         run: |
           set +e
