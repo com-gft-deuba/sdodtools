@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
 
-          echo "Found valid version format '${{inputs.tag}}'  Setting release type 'full'.
+          echo "Found valid version format '${{inputs.tag}}'  Setting release type 'full'."
           echo "release_type=full" >> "$GITHUB_ENV"
 
       - name: Checkout HEAD
