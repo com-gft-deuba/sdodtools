@@ -44,12 +44,15 @@ jobs:
         run: |
           read distribution < <( cd dist && ls -1 *.tar.gz | head -1 )
           echo "distribution='$distribution'" >> "$GITHUB_OUTPUT"
+          echo "distribution='$distribution'" >> "$GITHUB_ENV"
       - name: Determine version
         id: determine-version
         shell: bash
         run: |
+          env | sort
           read version < <( echo "${{ env.distribution }}" | sed -n 's/.*?-\(.*\).tar.gz$/\1/p' )
           echo "version='$version'" >> "$GITHUB_OUTPUT"
+          echo "version='$version'" >> "$GITHUB_ENV"
           echo "$version" dist/VERSION
       - name: "Upload artifacts"
         id: upload-artifact
