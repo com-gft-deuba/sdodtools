@@ -210,8 +210,8 @@ jobs:
         id: determine-distribution
         shell: bash
         run: |
-          (cd dist && ls -1 )
-          read distribution < <( cd dist && ls -1 *".$build_version.tar.gz" | head -1 )
+          find dist -type f -ls
+          read distribution < <( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
           echo "distribution=$distribution" >> "$GITHUB_ENV"
 
       - name: Create distribution meta-information
