@@ -52,9 +52,9 @@ jobs:
           set +e
           gh release view "${{ inputs.tag }}"
           status=$?
-          set -e
           echo
-          gh release view --json
+          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "${{ inputs.tag }}"
+          set -e
           echo
           echo "Status: $status"
 
