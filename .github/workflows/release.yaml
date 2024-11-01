@@ -50,7 +50,10 @@ jobs:
         run: |
           set +e
           gh release view "${{ inputs.tag }}"
+          status=$?
           set -e
+          echo
+          echo "Status: $status"
 
       # - name: GitHub Release
       #   id: github-release
