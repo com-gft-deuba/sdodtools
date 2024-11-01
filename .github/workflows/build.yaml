@@ -203,7 +203,9 @@ jobs:
       - name: Build
         id: build
         shell: bash
-        run: python -m build --sdist .
+        run: |
+          cat pyproject.toml
+          python -m build --sdist .
 
       - name: Determine distribution
         id: determine-distribution
