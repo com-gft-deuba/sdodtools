@@ -100,7 +100,7 @@ jobs:
             set +e
             build_version=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
             set -e
-            build_ref=${{ GITHUB_REF }}
+            build_ref="$GITHUB_REF"
 
             if [[ -z "$build_version" ]] ; then
 
