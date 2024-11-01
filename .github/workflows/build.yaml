@@ -104,14 +104,14 @@ jobs:
 
             if [[ -z "$build_version" ]] ; then
 
-              build_version="0.0.1-$build_stamp"
+              build_version="0.0.1.$build_stamp"
               echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
               echo "build_version=$build_version" >> "$GITHUB_ENV"
               exit 0
             
             fi
 
-            build_version="$build_version-$build_stamp"
+            build_version="$build_version.$build_stamp"
             echo "We're doing a dry-run found a version tag in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
             echo "build_version=$build_version" >> "$GITHUB_ENV"
             exit 0
@@ -204,14 +204,13 @@ jobs:
         id: build
         shell: bash
         run: |
-          cat pyproject.toml
           python -m build --sdist .
 
       - name: Determine distribution
         id: determine-distribution
         shell: bash
         run: |
-          read distribution < <( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
+          read distribution < <( cd dist && ls -1 *".$build_version.tar.gz" | head -1 )
           echo "distribution=$distribution" >> "$GITHUB_ENV"
 
       - name: Create distribution meta-information
@@ -220,7 +219,7 @@ jobs:
         run: |
           echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
           echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
-          echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo -n "build_tag=$build_tag" >> "$GITHUB_OUTPUT"
           echo -n "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
 
           mkdir dist/META
