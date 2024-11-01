@@ -94,7 +94,9 @@ jobs:
 
             fi
 
+            set +e
             build_version=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+            set -e
 
             if [[ -z "$build_version" ]] ; then
 
