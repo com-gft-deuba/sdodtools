@@ -54,6 +54,8 @@ jobs:
           status=$?
           set -e
           echo
+          gh release view --json
+          echo
           echo "Status: $status"
 
       # - name: GitHub Release
