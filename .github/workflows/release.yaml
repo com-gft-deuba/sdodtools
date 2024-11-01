@@ -22,12 +22,35 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
 
+      - name: Check for valid tag format
+        id: check-valid-tag
+        shell: bash
+        run: |
+
+          if [[ ! '${{inputs.tag}}' =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
+            echo "Invalid tag format: '${{inputs.tag}}'."
+            exit 1
+          fi
+
+          echo "Found valid version format '${{inputs.tag}}'."
+          exit 0
+
+      - name: Checkout TAG
+        id: checkout-tag
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          fetch-tags: true
+          ref: refs/tags/${{ inputs.tag }}
+
       - name: Check for existing release
         id: check-existing-release
         shell: bash
         run: |
           set +e
-          gh release view "v${{ inputs.tag }}"
+          gh release view "${{ inputs.tag }}"
+          set -e
 
       # - name: GitHub Release
       #   id: github-release
