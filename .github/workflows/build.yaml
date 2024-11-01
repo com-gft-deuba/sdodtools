@@ -33,7 +33,7 @@ jobs:
         run: |
 
           if [[ '${{inputs.tag}}' == 'dry-run' ]]; then
-            echo "Found tag 'dry-run' tag. Setting build type 'dry-run'."
+            echo "Found 'dry-run' tag. Setting build type 'dry-run'."
             echo "build_type=dry-run" >> "$GITHUB_ENV"
             exit 0
           fi
@@ -73,23 +73,25 @@ jobs:
         run: |
 
             build_stamp=$(date +%Y%m%d%H%M%S)
+
             if [[ "$build_type" == "tag" ]] ; then
 
               if [[ -z "${{ inputs.override_version }}" ]]; then
 
                 build_version=$( echo '${{ inputs.tag }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
                 echo "We're building a tag with no override version. Setting build version to '$build_version'."
-                echo "build_version=${build_version" >> "$GITHUB_ENV"
+                echo "build_version=$build_version" >> "$GITHUB_ENV"
 
               else
 
-                build_version=$( echo "${{ inputs.override_version }}" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
+                build_version=$( echo '${{ inputs.override_version }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
                 echo "We're building a tag with override version. Setting build version to '$build_version'."
                 echo "build_version=$build_version" >> "$GITHUB_ENV"
 
               fi
 
               exit 0
+
             fi
 
             build_version=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
@@ -97,14 +99,14 @@ jobs:
             if [[ -z "$build_version" ]] ; then
 
               build_version="0.0.1-$build_stamp"
-              echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to'$build_version'."
+              echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to '$build_version'."
               echo "build_version=$build_version" >> "$GITHUB_ENV"
               exit 0
             
             fi
 
             build_version="$build_version-$build_stamp"
-            echo "We're doing a dry-run found a version tag in the current branch. Setting build version to'$build_version'."
+            echo "We're doing a dry-run found a version tag in the current branch. Setting build version to '$build_version'."
             echo "build_version=$build_version" >> "$GITHUB_ENV"
             exit 0
 
