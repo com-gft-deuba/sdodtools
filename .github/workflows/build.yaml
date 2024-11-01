@@ -23,6 +23,7 @@ jobs:
     outputs:
       build_type: ${{ steps.set-output.outputs.build_type }}
       build_version: ${{ steps.set-output.outputs.build_version }}
+      build_ref: ${{ steps.set-output.outputs.build_ref }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -76,16 +77,18 @@ jobs:
 
             if [[ "$build_type" == "tag" ]] ; then
 
+              build_ref='refs/tags/${{ inputs.tag }}'
+
               if [[ -z "${{ inputs.override_version }}" ]]; then
 
                 build_version=$( echo '${{ inputs.tag }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
-                echo "We're building a tag with no override version. Setting build version to '$build_version'."
+                echo "We're building a tag with no override version. Setting build version to '$build_version' and build_ref to '$build_ref'."
                 echo "build_version=$build_version" >> "$GITHUB_ENV"
 
               else
 
                 build_version=$( echo '${{ inputs.override_version }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
-                echo "We're building a tag with override version. Setting build version to '$build_version'."
+                echo "We're building a tag with override version. Setting build version to '$build_version' and build_ref to '$build_ref'."
                 echo "build_version=$build_version" >> "$GITHUB_ENV"
 
               fi
@@ -97,18 +100,19 @@ jobs:
             set +e
             build_version=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
             set -e
+            build_ref=${{ GITHUB_REF }}
 
             if [[ -z "$build_version" ]] ; then
 
               build_version="0.0.1-$build_stamp"
-              echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to '$build_version'."
+              echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
               echo "build_version=$build_version" >> "$GITHUB_ENV"
               exit 0
             
             fi
 
             build_version="$build_version-$build_stamp"
-            echo "We're doing a dry-run found a version tag in the current branch. Setting build version to '$build_version'."
+            echo "We're doing a dry-run found a version tag in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
             echo "build_version=$build_version" >> "$GITHUB_ENV"
             exit 0
 
@@ -118,71 +122,118 @@ jobs:
         run: |
           echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
           echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "build_ref=$build_ref" >> "$GITHUB_OUTPUT"
 
           echo "Set build_type='$build_type'."
           echo "Set build_version='$build_version'."
+          echo "Set build_ref='$build_ref'."
 
 
-  # build:
-  #   runs-on: "ubuntu-latest"
-  #   needs: check_version
-  #   env:
-  #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #   outputs:
-  #     distribution: ${{ steps.determine-distribution.outputs.distribution }}
-  #     version: ${{ steps.determine-version.outputs.version }}
-  #   steps:
-  #     - name: Checkout HEAD
-  #       if: ${{ always() && ( needs.check_version.outputs.build_type == 'dry-run' || needs.check_version.outputs.build_type == 'new' ) }}
-  #       uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
-  #         fetch-depth: 1
-  #         fetch-tags: true
-  #     - name: Checkout TAG
-  #       uses: actions/checkout@v4
-  #       if: ${{ always() && needs.check_version.outputs.build_type == 'full' }}
-  #       with:
-  #         submodules: recursive
-  #         fetch-depth: 1
-  #         fetch-tags: true
-  #         ref: refs/tags/${{ inputs.tag }}
-  #     - name: Set up Python
-  #       id: setup-python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.x'
-  #     - name: Install build dependencies
-  #       id: install-depenencies
-  #       shell: bash
-  #       run: python3 -m pip install --upgrade pip setuptools wheel build virtualenv
-  #     - name: Build
-  #       id: build
-  #       shell: bash
-  #       run: python -m build --sdist .
-  #     - name: Determine distribution
-  #       id: determine-distribution
-  #       shell: bash
-  #       run: |
-  #         read distribution < <( cd dist && ls -1 *.tar.gz | head -1 )
-  #         echo "distribution=$distribution" >> "$GITHUB_OUTPUT"
-  #         echo "distribution=$distribution" >> "$GITHUB_ENV"
-  #     - name: Determine version
-  #       id: determine-version
-  #       shell: bash
-  #       run: |
-  #         env | sort | grep -i dist
-  #         read version < <( echo "$distribution" | sed -n 's/.*-\(.*\).tar.gz$/\1/p' )
-  #         echo "version=$version" >> "$GITHUB_OUTPUT"
-  #         echo "version=$version" >> "$GITHUB_ENV"
-  #         echo "$version" dist/VERSION
-  #     - name: "Upload artifacts"
-  #       id: upload-artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: distribution
-  #         if-no-files-found: error
-  #         retention-days: 2
-  #         path: |
-  #           dist/${{ steps.determine-distribution.outputs.distribution }}
-  #           dist/VERSION
+  build:
+    runs-on: "ubuntu-latest"
+    needs: check_version
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      distribution: ${{ steps.create-distribution-meta-information.outputs.distribution }}
+      build_version: ${{ steps.create-distribution-meta-information.outputs.build_version }}
+      build_tag: ${{ steps.create-distribution-meta-information.outputs.build_tag }}
+      build_ref: ${{ steps.create-distribution-meta-information.outputs.build_ref }}
+    steps:
+      - name: Setup Environment
+        id: setup-environment
+        shell: bash
+        run: |
+          echo "build_version=${{ needs.check_version.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ needs.check_version.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ needs.check_version.outputs.build_ref }}" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          fetch-tags: true
+          ref: ${{ needs.check_version.outputs.build_ref }}
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install build dependencies
+        id: install-depenencies
+        shell: bash
+        run: python3 -m pip install --upgrade pip setuptools wheel build virtualenv jinja2
+
+      - name: Process templates
+        id: process-templates
+        shell: python
+        run: |
+          import sys
+          import os
+          import jinja2
+
+          env = jinja2.Environment(loader = jinja2.FileSystemLoader('templates'))
+          variables = { 
+            'build_version': None,
+            'build_type': None,
+            'build_ref': None
+          }
+
+          for key in variables.keys():
+
+            if key not in os.environ:
+
+              print(f"Error: Environment variable '{key}' not found!")
+              sys.exit(10)
+
+            variables[key] = os.environ[key]
+
+          for filename in env.list_templates():
+
+            template = env.get_template(filename)
+            output = template.render(variables)
+
+            with open(filename, 'w') as f:
+
+              f.write(output)
+
+      - name: Build
+        id: build
+        shell: bash
+        run: python -m build --sdist .
+
+      - name: Determine distribution
+        id: determine-distribution
+        shell: bash
+        run: |
+          read distribution < <( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
+          echo "distribution=$distribution" >> "$GITHUB_ENV"
+
+      - name: Create distribution meta-information
+        id: create-distribution-meta-information
+        shell: bash
+        run: |
+          echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
+          echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo -n "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
+
+          mkdir dist/META
+          echo -n "$distribution"  > dist/META/DISTRIBUTION
+          echo -n "$build_version" > dist/META/VERSION
+          echo -n "$build_tag"     > dist/META/TAG
+          echo -n "$build_ref"     > dist/META/REF
+
+      - name: "Upload artifacts"
+        id: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution
+          if-no-files-found: error
+          retention-days: 2
+          path: |
+            dist/${{ steps.determine-distribution.outputs.distribution }}
+            dist/META

@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-version = {{ version }}
+version = {{ build_version }}
 name = "sdodtools_briconaut"
 description = "A set of small helpers to overcome SDOD limitations."
 authors = [
@@ -34,6 +34,3 @@ Issues = "https://github.com/com-gft-deuba/sdodtools/issues"
 crypt_manage ="sdodtools.crypt_manage:main"
 
 [tool.setuptools]
-
-[tool.setuptools.dynamic]
-version = { attr = "sdodtools.__version__" }
