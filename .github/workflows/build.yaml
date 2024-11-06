@@ -134,6 +134,10 @@ jobs:
 
             fi
 
+          else
+
+            echo "Found latest tag '$build_tag'."
+
           fi
 
           build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
@@ -275,7 +279,16 @@ jobs:
         shell: bash
         run: |
           find dist -type f -ls
-          read distribution < <( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
+          if [[ -z "$build_version_override" ]]; then
+
+            distribution=$( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
+
+          else
+
+            distribution=$( cd dist && ls -1 *"-$build_version_override.tar.gz" | head -1 )
+
+          fi
+
           echo "distribution=$distribution" >> "$GITHUB_ENV"
 
       # Write some meta information to the artifact and set the output of the job
