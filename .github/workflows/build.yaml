@@ -86,7 +86,7 @@ jobs:
           echo "build_type=$build_type" >> "$GITHUB_ENV"
 
       - name: Set build_type dry-run
-        if: steps.checkout-tag.outcome == 'failure'
+        if: steps.checkout-tag.outcome != 'success'
         id: set-build-type-dry-run
         shell: bash
         run: |
