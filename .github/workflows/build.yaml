@@ -138,6 +138,27 @@ jobs:
         run: |
           env | sort
 
+      - name: Show variables
+        id: show-vars
+        shell: bash
+        run: |
+
+          echo "distribution='$distribution'."
+          echo "build_type='$build_type'."
+          echo "build_version='$build_version'."
+          echo "build_version_override='$build_version_override'."
+          echo "build_tag='$build_tag'."
+          echo "build_ref='$build_ref'."
+
+      - name: Starting build
+        uses: ./.github/actions/build.yaml
+        with:
+          build_directory: .
+          build_tag: ${{ env.release_tag }}
+          build_version: ${{ env.build_version }}
+          build_version_override: ${{ env.build_version_override }}
+          build_type: ${{ env.release_type }}
+
       - name: Set output
         id: set-output
         shell: bash
@@ -155,15 +176,6 @@ jobs:
           echo "Set build_version_override='$build_version_override'."
           echo "Set build_tag='$build_tag'."
           echo "Set build_ref='$build_ref'."
-
-      - name: Starting build
-        uses: ./.github/workflows/build
-        with:
-          build_directory: .
-          build_tag: ${{ env.release_tag }}
-          build_version: ${{ env.build_version }}
-          build_version_override: ${{ env.build_version_override }}
-          build_type: ${{ env.release_type }}
 
   # # ==========================================================================
 
