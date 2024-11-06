@@ -3,8 +3,11 @@ permissions:
   "contents": "write"
 
 on:
+
   workflow_dispatch:
+
     inputs:
+
       release_tag:
         description: Build tag
         required: true
@@ -13,10 +16,23 @@ on:
 
 jobs:
 
-  prepare_release:
+  release:
+
     runs-on: "ubuntu-latest"
+
+    outputs:
+
+      distribution: ${{ steps.set-output.outputs.distribution }}
+      build_type: ${{ steps.set-output.outputs.build_type }}
+      build_version: ${{ steps.set-output.outputs.build_version }}
+      build_version_override: ${{ steps.set-output.outputs.build_version_override }}
+      build_tag: ${{ steps.set-output.outputs.build_tag }}
+      build_ref: ${{ steps.set-output.outputs.build_ref }}
+
     env:
+
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
 
       - name: Setup Environment
@@ -136,3 +152,42 @@ jobs:
       #       dist/*
             
       #       # --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+
+
+
+
+
+
+
+      - name: Building distribution
+        id: build
+        uses: ./.github/actions/build-directory
+        with:
+          build_directory: .
+          build_tag: ${{ env.build_tag }}
+          build_version: ${{ env.build_version }}
+          build_version_override: ${{ env.build_version_override }}
+          build_type: ${{ env.build_type }}
+
+      - name: Set output
+        id: set-output
+        shell: bash
+        run: |
+          distribution='${{ steps.build.outputs.distribution }}'
+          build_ref='${{ steps.build.outputs.build_ref }}'
+          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
+          echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
+          echo "build_type=$build_type"       >> "$GITHUB_OUTPUT"
+          echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
+          echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
+          echo "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
+
+          echo "Set distribution='$distribution'."
+          echo "Set build_type='$build_type'."
+          echo "Set build_version='$build_version'."
+          echo "Set build_version_override='$build_version_override'."
+          echo "Set build_tag='$build_tag'."
+          echo "Set build_ref='$build_ref'."
+

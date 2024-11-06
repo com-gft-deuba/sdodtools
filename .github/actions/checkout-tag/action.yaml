@@ -1,0 +1,122 @@
+name: 'Checkout TAG'
+
+description: 'Checkout tag and set build_type'
+
+inputs:
+
+  build_tag:
+    description: Build version override
+    required: true
+    default: ""
+
+  build_directory:
+    description: Directory to build
+    required: false
+    default: .
+
+outputs:
+
+  build_type:
+    description: Build type
+    value: ${{ steps.set-output.outputs.build_type }}
+
+  build_tag:
+    description: Build tag
+    value: ${{ steps.set-output.outputs.build_tag }}
+
+  build_version:
+    description: Build version
+    value: ${{ steps.set-output.outputs.build_version }}
+runs:
+
+  using: "composite"
+
+  steps:
+
+    - name: Setup Environment
+      id: setup-environment
+      shell: bash
+      run: |
+        echo "build_tag=${{inputs.build_tag}}" >> "$GITHUB_ENV"
+        echo "build_directory=${{inputs.build_directory}}" >> "$GITHUB_ENV"
+
+    - name: Check for valid tag
+      id: check-valid-tag
+      if: env.build_tag != 'dry-run'
+      shell: bash
+      run: |
+
+        if [[ ! "$build_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
+
+          echo "Invalid build_tag format: '$build_tag'. Aborting."
+          exit 1
+
+        fi
+
+    - name: Checkout TAG
+      id: checkout-tag
+      if: env.build_tag != 'dry-run'
+      continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 1
+        fetch-tags: 'true'
+        ref: refs/tags/${{ env.build_tag }}
+
+    - name: Abort when tag not found
+      id: abort-tag-not-found
+      if: steps.checkout-tag.outcome != 'success' && env.build_tag != 'dry-run'
+      shell: bash
+      run: |
+        echo "Tag '${{ env.build_tag }}' not found. Aborting build."
+        exit 1
+
+    - name: Set build_type tag
+      if: steps.checkout-tag.outcome == 'success'
+      id: set-build-type-tag
+      shell: bash
+      run: |
+        build_type='tag'
+        echo "Tag '$build_tag' found. Setting build_type '$build_type'."
+        echo "build_type=$build_type" >> "$GITHUB_ENV"
+
+    - name: Checkout HEAD
+      id: checkout-head
+      if: steps.checkout-tag.outcome != 'success'
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+        fetch-tags: 'true'
+
+    - name: Set build_type dry-run
+      if: steps.checkout-tag.outcome != 'success'
+      id: set-build-type-dry-run
+      shell: bash
+      run: |
+        build_type='dry-run'
+        echo "Tag '$build_tag' not found. Setting build_type '$build_type'."
+        echo "build_type=$build_type" >> "$GITHUB_ENV"
+        echo "build_tag=" >> "$GITHUB_ENV"
+
+    - name: Set build_version from build_tag
+      id: set-build-version
+      shell: bash
+      run: |
+        build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" )
+        echo "Setting build_version to '$build_version'."
+        echo "build_version=$build_version" >> "$GITHUB_ENV"
+
+    - name: Set output
+      id: set-output
+      shell: bash
+      run: |
+        echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
+        echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
+        echo "build_version=$build_version"         >> "$GITHUB_OUTPUT"
+
+        echo "Set build_type='$build_type'."
+        echo "Set build_tag='$build_tag'."
+        echo "Set build_version='$build_version'."
+

@@ -5,28 +5,28 @@ description: 'Standard build process for the current directory'
 inputs:
 
   build_tag:
-    description: Build version override
+    description: Tag the build is based on (information only)
     required: true
     default: ""
 
   build_directory:
-    description: Directory to build
+    description: Directory with the checked out sources
     required: false
     default: .
 
   build_version:
-    description: Build version
+    description: Version number of the artifact
     required: false
     default: dry-run
 
   build_version_override:
-    description: Build version override
+    description: Override of the build version
     required: false
     default: ""
 
   build_type:
-    description: Build version override
-    required: false
+    description: Type of the build. 'tag' or 'dry-run'
+    required: true
     default: "dry-run"
 
 outputs:
@@ -56,6 +56,7 @@ outputs:
     value: ${{ steps.set-output.outputs.build_ref }}
 
 runs:
+
   using: "composite"
   steps:
 
@@ -65,28 +66,52 @@ runs:
       id: setup-environment
       shell: bash
       run: |
-        build_stamp=$( date +%Y%m%d%H%M%S )
-        build_ref="$( git rev-parse HEAD )"
+
         echo "build_tag=${{inputs.build_tag}}" >> "$GITHUB_ENV"
         echo "build_directory=${{inputs.build_directory}}" >> "$GITHUB_ENV"
         echo "build_version=${{inputs.build_version}}" >> "$GITHUB_ENV"
         echo "build_version_override=${{inputs.build_version_override}}" >> "$GITHUB_ENV"
+
+        build_stamp=$( date +%Y%m%d%H%M%S )
+        build_ref="$( git rev-parse HEAD )"
         echo "build_stamp=$build_stamp" >> "$GITHUB_ENV"
         echo "build_ref=$build_ref" >> "$GITHUB_ENV"
 
-    # Check and cleanup the build version
-
-    - name: Check for valid parameters
-      id: check-valid-tag
+    - name: Set build_tag from git
+      id: Set-build-version
+      if: env.build_type == 'dry-run' && env.build_stamp != ''
       shell: bash
       run: |
 
-        if [[ "$build_type" != 'dry-run' ]] && [[ "$build_type" != 'tag' ]] ; then
+        set +e
+        build_tag=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+        set -e
 
-          echo "Invalid build_type: '$build_type'. Aborting."
-          exit 0
+        if [[ -z "$build_tag" ]] ; then 
+
+          echo "No build_tag found in current branch, checking full repo."
+          set +e
+          build_tag=$( git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+          set -e
 
         fi
+
+        if [[ -z "$build_tag" ]] ; then 
+
+            build_tag="v0.0.1"
+            echo "No build_tag found in repo, using '$build_tag'."
+
+        fi
+
+        echo "Setting build_tag to '$build_tag'."
+        echo "build_tag=$build_tag" >> "$GITHUB_ENV"
+
+    # Check and cleanup the build version
+
+    - name: Check for valid tag
+      id: check-valid-tag
+      shell: bash
+      run: |
 
         if [[ ! "$build_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
 
@@ -95,12 +120,31 @@ runs:
 
         fi
 
-        if [[ -z "$build_version" ]] ; then build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" ) ; fi
+    # Check the tag and version
 
-        if [[ ! "$build_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(\.[0-9.])?$ ]] ; then 
+    - name: Check and fix version
+      id: check-valid-version
+      shell: bash
+      run: |
+
+        if [[ -z "$build_version" ]] ; then
+        
+          echo "Substituting build_version with build_tag '$build_tag'."
+          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" )
+          
+        fi
+
+        if [[ ! "$build_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
 
           echo "Invalid build_version format: '$build_version'. Aborting."
           exit 1
+
+        fi
+
+        if [[ "$build_type" == "dry-run" ]] ; then 
+
+          echo "Extending build_version with build_stamp '$build_stamp' for 'dry-run'."
+          build_version="$build_version.$build_stamp"
 
         fi
 
