@@ -238,8 +238,8 @@ jobs:
             'build_version': None,
             'build_version_override': None,
             'build_type': None,
-            'build_ref': None
-            'build_tag': None
+            'build_ref': None,
+            'build_tag': None,
           }
 
           for key in variables.keys():
