@@ -148,10 +148,10 @@ jobs:
           echo "build_version='$build_version'."
           echo "build_version_override='$build_version_override'."
           echo "build_tag='$build_tag'."
-          echo "build_ref='$build_ref'."
 
       - name: Starting build
-        uses: ./.github/actions/build.yaml
+        id: build
+        uses: ./.github/actions/build-directory
         with:
           build_directory: .
           build_tag: ${{ env.release_tag }}
@@ -163,6 +163,7 @@ jobs:
         id: set-output
         shell: bash
         run: |
+          echo "XXX '${{ steps.build.outputs.distribution }}'"
           echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
           echo -n "build_type=$build_type"       >> "$GITHUB_OUTPUT"
           echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
