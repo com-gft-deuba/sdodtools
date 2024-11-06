@@ -59,9 +59,17 @@ jobs:
           fetch-tags: 'true'
           ref: refs/tags/${{ env.build_tag }}
 
+      - name: Abort when tag not found
+        id: abort-tag-not-found
+        if: steps.checkout-tag.outcome != 'success' && env.build_tag != 'dry-run'
+        shell: bash
+        run: |
+          echo "Tag '${{ env.build_tag }}' not found. Aborting build."
+          exit 1
+
       - name: Checkout HEAD
         id: checkout-head
-        if: steps.checkout-tag.outcome == 'failure' or env.build_tag == 'dry-run'
+        if: steps.checkout-tag.outcome != 'success'
         uses: actions/checkout@v4
         with:
           submodules: recursive
