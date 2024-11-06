@@ -222,5 +222,5 @@ runs:
         if-no-files-found: error
         retention-days: 2
         path: |
-          dist/${{ steps.determine-distribution.outputs.distribution }}
+          dist/${{ env.distribution }}
           dist/META
