@@ -72,7 +72,7 @@ runs:
         echo "build_version=${{inputs.build_version}}" >> "$GITHUB_ENV"
         echo "build_version_override=${{inputs.build_version_override}}" >> "$GITHUB_ENV"
         echo "build_stamp=$build_stamp" >> "$GITHUB_ENV"
-        echo "build_ref=${{inputs.build_ref}}" >> "$GITHUB_ENV"
+        echo "build_ref=$build_ref" >> "$GITHUB_ENV"
 
     # Check and cleanup the build version
 
