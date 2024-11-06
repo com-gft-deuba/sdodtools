@@ -50,9 +50,9 @@ jobs:
         run: |
           if [[ ! -z "$build_version_override" ]]; then
 
-            if [[ "$build_version_override" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+\(\.[0-9.]*\)*$ ]] ; then 
+            if [[ "$build_version_override" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(\.[0-9.]*)?$ ]] ; then 
 
-              build_version_override=$( echo "$build_version_override" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
+              build_version_override=$( echo "$build_version_override" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" )
               echo "Found valid 'override_version' with value '$build_version_override'."
 
             else
@@ -114,16 +114,6 @@ jobs:
         run: |
           build_ref="$( git rev-parse HEAD )"
           set +e
-          echo "AAAAAAAAAAAA"
-          git tag --list 'v*'
-          echo "BBBBBBBBBBBB"
-          git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$"
-          echo "CCCCCCCCCCCC"
-          git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V 
-          echo "DDDDDDDDDDDD"
-          git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1
-          echo "EEEEEEEEEEEE"
-          git tag --list
           build_tag=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
           set -e
 
