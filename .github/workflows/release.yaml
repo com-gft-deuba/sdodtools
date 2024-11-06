@@ -8,7 +8,7 @@ on:
       release_tag:
         description: Build tag
         required: true
-        default: ""
+        default: "v0.0.2"
         type: string
 
 jobs:
@@ -59,47 +59,64 @@ jobs:
           fetch-depth: 1
           fetch-tags: true
 
-      - name: Check for existing release
-        id: check-existing-release
+      - name: Check for release type
+        id: check-release-type
         shell: bash
         run: |
 
-          if [[ "${{ steps.checkout-tag.outcome }}" == 'failure' ]]; then
-
-            echo "Tag '$release_tag' not found, will create a new release."
-            echo "release_type=new" >> "$GITHUB_ENV"
-            echo "release_id=" >> "$GITHUB_ENV"
-            exit 0
-
-          fi
-
           set +e
-          gh release view "$release_tag"
+          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag" > release_info.json
           status=$?
           set -e
 
-          if [[ $status -ne 0 ]]; then
+          if [[ $status -ne 0 ]] ; then
 
-            echo "Release '$release_tag' not found, will create a new one."
+            if [[ '${{ steps.checkout-tag.outcome }}' == 'failure' ]] ; then
+
+              echo "Neither tag nor release '$release_tag' not found. Aborting!"
+              echo "release_type=error" >> "$GITHUB_ENV"
+              echo "release_id=" >> "$GITHUB_ENV"
+              echo "release_is_draft=false" >> "$GITHUB_ENV"
+              exit 1
+
+            fi
+
+            echo "Tag found but no release '$release_tag' not found, will create a new one."
             echo "release_type=new" >> "$GITHUB_ENV"
             echo "release_id=" >> "$GITHUB_ENV"
+            echo "release_is_draft=true" >> "$GITHUB_ENV"
             exit 0
 
           fi
-          
-          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag"
 
-          release_id=$( gh release view --json "id" "$release_tag" )
+          release_id=$( echo "$output" | jq -r .id - )
+          release_is_draft=$( echo "$output" | jq -r .isDraft - )
 
-          echo "Release '$release_tag' found with id '$release_id'. Will augment the release."
+          if [[ "$release_is_draft" != "true" ]]; then
+
+            echo "Found '$release_tag' with id '$release_id' but it is NOT a draft. Aborting!"
+            echo "release_type=error" >> "$GITHUB_ENV"
+            echo "release_id=$release_id" >> "$GITHUB_ENV"
+            echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
+            exit 1
+
+          fi
+
+          echo "Release draft '$release_tag' with id '$release_id' found. Setting release_type to 'augment'."
           echo "release_type=augment" >> "$GITHUB_ENV"
-          echo "release_id=$id" >> "$GITHUB_ENV"
+          echo "release_id=$release_id" >> "$GITHUB_ENV"
+          echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
 
       - name: Show env
         id: show-env
         shell: bash
         run: |
           env | sort
+
+      - name: Starting build of release
+        uses: ./.github/workflows/build
+        with:
+          build_tag: ${{ env.release_tag }}
 
       # - name: GitHub Release
       #   id: github-release
