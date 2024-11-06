@@ -136,6 +136,7 @@ jobs:
 
           fi
 
+          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
           echo "build_tag=$build_tag" >> "$GITHUB_ENV"
           echo "build_version=$build_version" >> "$GITHUB_ENV"
           echo "build_ref=$build_ref" >> "$GITHUB_ENV"
