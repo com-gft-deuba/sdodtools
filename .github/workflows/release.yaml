@@ -5,7 +5,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      release_tag:
         description: Build tag
         required: true
         default: ""
@@ -23,70 +23,76 @@ jobs:
         id: setup-environment
         shell: bash
         run: |
-          echo "build_tag=${{inputs.tag}}" >> "$GITHUB_ENV"
+          echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_ENV"
 
       - name: Check for valid tag format
         id: check-valid-tag
         shell: bash
         run: |
+          if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
 
-          if [[ ! "$build_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
-
-            echo "Invalid tag format: '$build_tag'. Setting build type 'error'."
-            echo "build_type=error" >> "$GITHUB_ENV"
+            echo "Invalid tag format: '$release_tag'. Setting release type 'error'."
+            echo "release_type=error" >> "$GITHUB_ENV"
             exit 1
 
           fi
 
-          echo "Found valid tag format '$build_tag'."
+          echo "Found valid tag format '$release_tag'."
+          echo "release_tag=$release_tag" >> "$GITHUB_ENV"
 
-      # - name: Checkout TAG
-      #   id: checkout-tag
-      #   continue-on-error: true
-      #   uses: actions/checkout@v4
-      #   with:
-      #     submodules: recursive
-      #     fetch-depth: 1
-      #     fetch-tags: true
-      #     ref: refs/tags/${{ env.build_tag }}
+      - name: Checkout TAG
+        id: checkout-tag
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          fetch-tags: true
+          ref: refs/tags/${{ env.release_tag }}
 
-      # - name: Checkout HEAD
-      #   id: checkout-head
-      #   if: steps.checkout-tag.outcome == 'failure'
-      #   uses: actions/checkout@v4
-      #   with:
-      #     submodules: recursive
-      #     fetch-depth: 1
-      #     fetch-tags: true
-      #     ref: refs/tags/${{ env.build_tag }}
-
-      # - name: Set tag
-      #   id: create-tag
-      #   if: steps.checkout-tag.outcome == 'failure'
+      - name: Checkout HEAD
+        id: checkout-head
+        if: steps.checkout-tag.outcome == 'failure'
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          fetch-tags: true
 
       - name: Check for existing release
         id: check-existing-release
         shell: bash
         run: |
+
+          if [[ "${{ steps.checkout-tag.outcome }}" == 'failure' ]]; then
+
+            echo "Tag '$release_tag' not found, will create a new release."
+            echo "release_type=new" >> "$GITHUB_ENV"
+            echo "release_id=" >> "$GITHUB_ENV"
+            exit 0
+
+          fi
+
           set +e
-          gh release view "$build_tag"
+          gh release view "$release_tag"
           status=$?
           set -e
 
           if [[ $status -ne 0 ]]; then
 
-            echo "Release not found, will create a new one."
+            echo "Release '$release_tag' not found, will create a new one."
             echo "release_type=new" >> "$GITHUB_ENV"
             echo "release_id=" >> "$GITHUB_ENV"
             exit 0
 
           fi
           
-          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$build_tag"
+          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag"
 
+          release_id=$( gh release view --json "id" "$release_tag" )
 
-          release_id=$( gh release view --json "id" "$build_tag" )
-          echo "release_type=new" >> "$GITHUB_ENV"
+          echo "Release '$release_tag' found with id '$release_id'. Will augment the release."
+          echo "release_type=augment" >> "$GITHUB_ENV"
           echo "release_id=$id" >> "$GITHUB_ENV"
 
       - name: Show env

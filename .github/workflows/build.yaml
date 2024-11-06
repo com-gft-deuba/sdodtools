@@ -41,8 +41,8 @@ jobs:
         run: |
           build_stamp=$( date +%Y%m%d%H%M%S )
           echo "build_stamp=$build_stamp" >> "$GITHUB_ENV"
-          echo "build_tag=${{inputs.tag}}" >> "$GITHUB_ENV"
-          echo "build_version_override=${{inputs.override_version}}" >> "$GITHUB_ENV"
+          echo "build_tag=${{inputs.build_tag}}" >> "$GITHUB_ENV"
+          echo "build_version_override=${{inputs.build_version_override}}" >> "$GITHUB_ENV"
 
       - name: Check for valid tag format
         id: check-valid-tag
