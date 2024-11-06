@@ -279,8 +279,10 @@ jobs:
         id: determine-distribution
         shell: bash
         run: |
+          cat pyproject.toml
+          echo
           find dist -type f -ls
-          if [[ -z "$build_version_override" ]]; then
+          if [[ -z "$build_version_override" ]] ; then
 
             distribution=$( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
 
