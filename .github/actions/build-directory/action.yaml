@@ -75,7 +75,7 @@ runs:
       shell: bash
       run: |
 
-        if [[ "$build_type" != 'dry-run' -a "$build_type" != 'tag' ]] ; then
+        if [[ "$build_type" != 'dry-run' ]] && [[ "$build_type" != 'tag' ]] ; then
 
           echo "Invalid build_type: '$build_type'. Aborting."
           exit 0
