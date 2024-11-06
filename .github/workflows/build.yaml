@@ -271,6 +271,8 @@ jobs:
         id: build
         shell: bash
         run: |
+          cat pyproject.toml
+          echo
           python -m build --sdist .
 
       # Check the name of the artifact we build
@@ -279,8 +281,6 @@ jobs:
         id: determine-distribution
         shell: bash
         run: |
-          cat pyproject.toml
-          echo
           find dist -type f -ls
           if [[ -z "$build_version_override" ]] ; then
 
