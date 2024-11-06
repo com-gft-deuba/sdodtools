@@ -271,8 +271,6 @@ jobs:
         id: build
         shell: bash
         run: |
-          cat pyproject.toml
-          echo
           python -m build --sdist .
 
       # Check the name of the artifact we build
