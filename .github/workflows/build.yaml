@@ -93,7 +93,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
-          fetch-tags: true
+          fetch-tags: 'true'
 
       - name: Checkout TAG
         id: checkout-tag
@@ -102,7 +102,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
-          fetch-tags: true
+          fetch-tags: 'true'
           ref: refs/tags/${{ env.build_tag }}
 
       # When we're building a dry-run, create a temporary name, based on the latest tag in the build branch
@@ -122,6 +122,8 @@ jobs:
           git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V 
           echo "DDDDDDDDDDDD"
           git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1
+          echo "EEEEEEEEEEEE"
+          git tag --list
           build_tag=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
           set -e
 
