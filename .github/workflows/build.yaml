@@ -164,8 +164,8 @@ jobs:
         shell: bash
         run: |
           echo "XXX 1 '${{ steps.build.outputs.distribution }}'"
-          echo "XXX 2 '${{ steps.build.outputs.build_type }}'"
-          echo "XXX 3 '${{ steps.build.outputs.build_ref }}'"
+          echo "XXX 2 '${{ steps.build.outputs.distribution['build_type'] }}'"
+          echo "XXX 3 '${{ steps.build.outputs['build_type'] }}'"
           echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
           echo -n "build_type=$build_type"       >> "$GITHUB_OUTPUT"
           echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
