@@ -154,10 +154,10 @@ jobs:
         uses: ./.github/actions/build-directory
         with:
           build_directory: .
-          build_tag: ${{ env.release_tag }}
+          build_tag: ${{ env.build_tag }}
           build_version: ${{ env.build_version }}
           build_version_override: ${{ env.build_version_override }}
-          build_type: ${{ env.release_type }}
+          build_type: ${{ env.build_type }}
 
       - name: Set output
         id: set-output

@@ -30,21 +30,27 @@ inputs:
     default: "dry-run"
 
 outputs:
+
   distribution:
     description: Distribution file
     value: ${{ steps.set-output.outputs.distribution }}
+
   build_type:
     description: Build type
     value: ${{ steps.set-output.outputs.build_type }}
+
   build_version:
     description: Build version
     value: ${{ steps.set-output.outputs.build_version }}
+
   build_version_override:
     description: Build version override
     value: ${{ steps.set-output.outputs.build_version_override }}
+
   build_tag:
     description: Build tag
     value: ${{ steps.set-output.outputs.build_tag }}
+
   build_ref:
     description: Build ref
     value: ${{ steps.set-output.outputs.build_ref }}
