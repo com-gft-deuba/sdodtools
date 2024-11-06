@@ -182,15 +182,15 @@ runs:
       shell: bash
       run: |
         mkdir dist/META
-        echo -n "$distribution"  > dist/META/DISTRIBUTION
-        echo -n "$build_type"    > dist/META/TYPE
-        echo -n "$build_version" > dist/META/VERSION
-        echo -n "$build_tag"     > dist/META/TAG
-        echo -n "$build_ref"     > dist/META/REF
+        echo "$distribution"  > dist/META/DISTRIBUTION
+        echo "$build_type"    > dist/META/TYPE
+        echo "$build_version" > dist/META/VERSION
+        echo "$build_tag"     > dist/META/TAG
+        echo "$build_ref"     > dist/META/REF
 
         if [[ ! -z "$build_version_override" ]]; then
 
-          echo -n "$build_version_override" > dist/META/VERSION_OVERRIDE
+          echo "$build_version_override" > dist/META/VERSION_OVERRIDE
 
         fi
 
@@ -200,12 +200,12 @@ runs:
       id: set-output
       shell: bash
       run: |
-        echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
-        echo -n "build_type=$build_type" >> "$GITHUB_OUTPUT"
-        echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
-        echo -n "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
-        echo -n "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
-        echo -n "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
+        echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
+        echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
+        echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+        echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
+        echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
+        echo "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
 
         echo "Set distribution='$distribution'."
         echo "Set build_type='$build_type'."
