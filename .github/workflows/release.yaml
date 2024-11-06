@@ -52,11 +52,16 @@ jobs:
           set +e
           gh release view "${{ inputs.tag }}"
           status=$?
-          echo
-          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "${{ inputs.tag }}"
           set -e
-          echo
-          echo "Status: $status"
+
+          if [[ $status -ne 0 ]]; then
+
+            echo "Release not found, will create a new one."
+            exit 0
+
+          fi
+          
+          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "${{ inputs.tag }}"
 
       # - name: GitHub Release
       #   id: github-release

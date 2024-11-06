@@ -3,6 +3,7 @@ permissions:
   "contents": "write"
 
 on:
+
   workflow_dispatch:
     inputs:
       tag:
@@ -18,39 +19,75 @@ on:
 
 jobs:
 
+  # ==========================================================================
+
   check_version:
     runs-on: "ubuntu-latest"
     outputs:
       build_type: ${{ steps.set-output.outputs.build_type }}
       build_version: ${{ steps.set-output.outputs.build_version }}
+      build_version_override: ${{ steps.set-output.outputs.build_version_override }}
+      build_tag: ${{ steps.set-output.outputs.build_tag }}
       build_ref: ${{ steps.set-output.outputs.build_ref }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
 
+      # Valid build tags need to match the format 'vX.Y.Z'
+
+      - name: Setup Environment
+        id: setup-environment
+        shell: bash
+        run: |
+          build_stamp=$( date +%Y%m%d%H%M%S )
+          echo "build_stamp=$build_stamp" >> "$GITHUB_ENV"
+          echo "build_tag=${{inputs.tag}}" >> "$GITHUB_ENV"
+          echo "build_version_override=${{inputs.override_version}}" >> "$GITHUB_ENV"
+
       - name: Check for valid tag format
         id: check-valid-tag
         shell: bash
         run: |
+          if [[ ! -z "$build_version_override" ]]; then
 
-          if [[ '${{inputs.tag}}' == 'dry-run' ]]; then
+            if [[ "$build_version_override" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+\(\.[0-9.]*\)*$ ]] ; then 
+
+              build_version_override=$( echo "$build_version_override" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
+              echo "Found valid 'override_version' with value '$build_version_override'."
+
+            else
+
+              echo "Invalid override_version format: '$build_version_override'. Setting build type 'error'."
+              echo "build_type=error" >> "$GITHUB_ENV"
+              exit 1
+
+            fi
+
+          fi
+
+          if [[ "$build_tag" == 'dry-run' ]]; then
+
             echo "Found 'dry-run' tag. Setting build type 'dry-run'."
             echo "build_type=dry-run" >> "$GITHUB_ENV"
             exit 0
+
           fi
 
-          if [[ ! '${{inputs.tag}}' =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
-            echo "Invalid tag format: '${{inputs.tag}}'. Setting build type 'error'."
+          if [[ ! "$build_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
+
+            echo "Invalid tag format: '$build_tag'. Setting build type 'error'."
             echo "build_type=error" >> "$GITHUB_ENV"
             exit 1
+
           fi
 
-          echo "Found valid version format '${{inputs.tag}}'. Setting build type 'tag'."
+          echo "Found valid tag format '$build_tag'. Setting build type 'tag'."
           echo "build_type=tag" >> "$GITHUB_ENV"
-          exit 0
 
-      - name: Checkout HEAD
-        id: checkout-head
+      # Do the checkout of the HEAD or the TAG. When the TAG is set, this also verifies that the tag exists.
+
+      - name: Checkout DRYRUN
+        id: checkout-dryrun
         if: ${{ always() && env.build_type == 'dry-run' }}
         uses: actions/checkout@v4
         with:
@@ -66,55 +103,57 @@ jobs:
           submodules: recursive
           fetch-depth: 1
           fetch-tags: true
-          ref: refs/tags/${{ inputs.tag }}
+          ref: refs/tags/${{ env.build_tag }}
 
-      - name: Determine build version
-        id: determine-build-version
+      # When we're building a dry-run, create a temporary name, based on the latest tag in the build branch
+
+      - name: Determine build version for DRYRUN
+        id: determine-build-version-for-dryrun
+        if: ${{ always() && env.build_type == 'dry-run' }}
         shell: bash
         run: |
+          build_ref="$( git rev-parse HEAD )"
+          set +e
+          build_tag=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+          set -e
 
-            build_stamp=$(date +%Y%m%d%H%M%S)
-
-            if [[ "$build_type" == "tag" ]] ; then
-
-              build_ref='refs/tags/${{ inputs.tag }}'
-
-              if [[ -z "${{ inputs.override_version }}" ]]; then
-
-                build_version=$( echo '${{ inputs.tag }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
-                echo "We're building a tag with no override version. Setting build version to '$build_version' and build_ref to '$build_ref'."
-                echo "build_version=$build_version" >> "$GITHUB_ENV"
-
-              else
-
-                build_version=$( echo '${{ inputs.override_version }}' | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
-                echo "We're building a tag with override version. Setting build version to '$build_version' and build_ref to '$build_ref'."
-                echo "build_version=$build_version" >> "$GITHUB_ENV"
-
-              fi
-
-              exit 0
-
-            fi
+          if [[ -z "$build_tag" ]] ; then 
 
             set +e
-            build_version=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+            build_tag=$( git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
             set -e
-            build_ref="$GITHUB_REF"
 
-            if [[ -z "$build_version" ]] ; then
+            if [[ -z "$build_tag" ]] ; then 
 
-              build_version="0.0.1.$build_stamp"
-              echo "We're doing a dry-run and found no version tags in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
-              echo "build_version=$build_version" >> "$GITHUB_ENV"
-              exit 0
-            
+              echo "Current checkout has no tags! Using 'v0.0.1' as intial version for dry-run."
+              build_tag="v0.0.1" ; fi
+
+            else
+
+              echo "Current checkout has no tags! Using latest tag '$build_tag' as version."
+
             fi
 
-            build_version="$build_version.$build_stamp"
-            echo "We're doing a dry-run found a version tag in the current branch. Setting build version to '$build_version' and build_ref to '$build_ref'."
-            echo "build_version=$build_version" >> "$GITHUB_ENV"
-            exit 0
+          fi
+
+          echo "build_tag=$build_tag" >> "$GITHUB_ENV"
+          echo "build_version=$build_version" >> "$GITHUB_ENV"
+          echo "build_ref=$build_ref" >> "$GITHUB_ENV"
+
+      # When we're building a tag, use the given tag or the override vor the build version
+
+      - name: Determine build version for TAG
+        id: determine-build-version-for-tag
+        if: ${{ always() && env.build_type == 'tag' }}
+        shell: bash
+        run: |
+          build_ref="$( git rev-parse "$build_tag" )"
+          echo "build_ref=$build_ref" >> "$GITHUB_ENV"
+          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\)/\1/p" )
+          echo "Setting build version to '$build_version' and build_ref to '$build_ref'."
+          echo "build_version=$build_version" >> "$GITHUB_ENV"
+
+      # Set the output for the build job
 
       - name: Set output
         id: set-output
@@ -122,11 +161,17 @@ jobs:
         run: |
           echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
           echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
+          echo "build_tag=$build_tag" >> "$GITHUB_OUTPUT"
           echo "build_ref=$build_ref" >> "$GITHUB_OUTPUT"
 
           echo "Set build_type='$build_type'."
           echo "Set build_version='$build_version'."
+          echo "Set build_version_override='$build_version_override'."
+          echo "Set build_tag='$build_tag'."
           echo "Set build_ref='$build_ref'."
+
+  # ==========================================================================
 
   build:
     runs-on: "ubuntu-latest"
@@ -134,18 +179,27 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
-      distribution: ${{ steps.create-distribution-meta-information.outputs.distribution }}
-      build_version: ${{ steps.create-distribution-meta-information.outputs.build_version }}
-      build_tag: ${{ steps.create-distribution-meta-information.outputs.build_tag }}
-      build_ref: ${{ steps.create-distribution-meta-information.outputs.build_ref }}
+      distribution: ${{ steps.set-output.outputs.distribution }}
+      build_type: ${{ steps.set-output.outputs.build_type }}
+      build_version: ${{ steps.set-output.outputs.build_version }}
+      build_version_override: ${{ steps.set-output.outputs.build_version_override }}
+      build_tag: ${{ steps.set-output.outputs.build_tag }}
+      build_ref: ${{ steps.set-output.outputs.build_ref }}
     steps:
+
+      # Transfer the outputs of the previous job to the environment
+
       - name: Setup Environment
         id: setup-environment
         shell: bash
         run: |
           echo "build_version=${{ needs.check_version.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_version_override=${{ needs.check_version.outputs.build_version_override }}" >> "$GITHUB_ENV"
           echo "build_type=${{ needs.check_version.outputs.build_type }}" >> "$GITHUB_ENV"
           echo "build_ref=${{ needs.check_version.outputs.build_ref }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ needs.check_version.outputs.build_tag }}" >> "$GITHUB_ENV"
+
+      # Checkout with the reference of the previous job
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -153,7 +207,9 @@ jobs:
           submodules: recursive
           fetch-depth: 1
           fetch-tags: true
-          ref: ${{ needs.check_version.outputs.build_ref }}
+          ref: ${{ env.build_ref }}
+
+      # Setup build environment
 
       - name: Set up Python
         id: setup-python
@@ -166,6 +222,8 @@ jobs:
         shell: bash
         run: python3 -m pip install --upgrade pip setuptools wheel build virtualenv jinja2
 
+      # Replace placeholders in the templates with the environment variables
+
       - name: Process templates
         id: process-templates
         shell: python
@@ -177,8 +235,10 @@ jobs:
           env = jinja2.Environment(loader = jinja2.FileSystemLoader('templates'))
           variables = { 
             'build_version': None,
+            'build_version_override': None,
             'build_type': None,
             'build_ref': None
+            'build_tag': None
           }
 
           for key in variables.keys():
@@ -199,11 +259,15 @@ jobs:
 
               f.write(output)
 
+      # Do the actual build
+
       - name: Build
         id: build
         shell: bash
         run: |
           python -m build --sdist .
+
+      # Check the name of the artifact we build
 
       - name: Determine distribution
         id: determine-distribution
@@ -213,22 +277,46 @@ jobs:
           read distribution < <( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
           echo "distribution=$distribution" >> "$GITHUB_ENV"
 
+      # Write some meta information to the artifact and set the output of the job
+
       - name: Create distribution meta-information
         id: create-distribution-meta-information
         shell: bash
         run: |
-          echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
-          echo -n "build_type=$build_type" >> "$GITHUB_OUTPUT"
-          echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
-          echo -n "build_tag=$build_tag" >> "$GITHUB_OUTPUT"
-          echo -n "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
-
           mkdir dist/META
           echo -n "$distribution"  > dist/META/DISTRIBUTION
           echo -n "$build_type"    > dist/META/TYPE
           echo -n "$build_version" > dist/META/VERSION
           echo -n "$build_tag"     > dist/META/TAG
           echo -n "$build_ref"     > dist/META/REF
+
+          if [[ ! -z "$build_version_override" ]]; then
+
+            echo -n "$build_version_override" > dist/META/VERSION_OVERRIDE
+
+          fi
+          
+      # Set the output of the job
+
+      - name: Set output
+        id: set-output
+        shell: bash
+        run: |
+          echo -n "distribution=$distribution"   >> "$GITHUB_OUTPUT"
+          echo -n "build_type=$build_type"       >> "$GITHUB_OUTPUT"
+          echo -n "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo -n "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
+          echo -n "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
+          echo -n "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
+
+          echo "Set distribution='$distribution'."
+          echo "Set build_type='$build_type'."
+          echo "Set build_version='$build_version'."
+          echo "Set build_version_override='$build_version_override'."
+          echo "Set build_tag='$build_tag'."
+          echo "Set build_ref='$build_ref'."
+
+      # Upload the artifact
 
       - name: "Upload artifacts"
         id: upload-artifact
