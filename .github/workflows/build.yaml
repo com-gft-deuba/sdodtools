@@ -111,9 +111,8 @@ jobs:
           echo "Setting build_tag to '$build_tag'."
           echo "build_tag=$build_tag" >> "$GITHUB_ENV"
 
-
       - name: Set build_version from build_tag
-        id: Set-build-version
+        id: set-build-version-from-tag
         if: steps.checkout-tag.outcome == 'success'
         shell: bash
         run: |
@@ -122,7 +121,7 @@ jobs:
           echo "build_version=$build_version" >> "$GITHUB_ENV"
         
       - name: Set build_version and build_tag from git
-        id: Set-build-version
+        id: Set-build-version-from-git
         if: steps.checkout-tag.outcome == 'failure'
         shell: bash
         run: |
