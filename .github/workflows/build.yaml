@@ -126,7 +126,7 @@ jobs:
             if [[ -z "$build_tag" ]] ; then 
 
               echo "Current checkout has no tags! Using 'v0.0.1' as intial version for dry-run."
-              build_tag="v0.0.1" ; fi
+              build_tag="v0.0.1"
 
             else
 
