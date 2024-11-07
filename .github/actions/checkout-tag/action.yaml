@@ -129,12 +129,24 @@ runs:
         echo "Setting build_tag to '$build_tag'."
         echo "build_tag=$build_tag" >> "$GITHUB_ENV"
 
-
     - name: Set build_version from build_tag
       id: set-build-version
       shell: bash
       run: |
         build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" )
+
+        if [[ "$build_type" == 'dry-run' ]] ; then
+
+          set +e
+          count=$(git rev-list --count "$build_tag"...HEAD -- )
+          set -e
+
+          if [[ -z "$count" ]] ; then count=0 ; fi
+
+          build_version="$build_version.$count"
+          
+        fi
+
         echo "Setting build_version to '$build_version' from build_tag '$build_tag'."
         echo "build_version=$build_version" >> "$GITHUB_ENV"
 
