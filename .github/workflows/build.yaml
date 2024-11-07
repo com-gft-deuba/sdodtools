@@ -134,7 +134,7 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: ./.github/actions/checkout-tag
+        uses: com-gft-deuba/sdodtools/.github/actions/checkout-tag@develop-workflows
         # with:
         #   build_directory: .
         #   build_tag: ${{ env.build_tag }}
