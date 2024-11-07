@@ -165,10 +165,11 @@ jobs:
         shell: bash
         run: |
           set +e
+          for f in "dist/$distribution" dist/META-*.tar.gz ; do
           gh release delete-asset \
             "$release_tag" \
-            "dist/$distribution" \
-            dist/META-*.tar.gz
+            "$f"
+          done
           set -e
           gh release upload \
             "$release_tag" \
