@@ -90,7 +90,7 @@ jobs:
 
       - name: Abort if neither release nor tag found
         id: abort-missing-release-and-tag
-        if: steps.check-release-exists.outcome != 'success' and steps.checkout-tag.outcome != 'success'
+        if: steps.check-release-exists.outcome != 'success' && steps.checkout-tag.outcome != 'success'
         shell: bash
         run: exit 1
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: Abort if found release is not a draft
         id: abort-release-is-no-draft
-        if: steps.check-release-exists.outcome == 'success' and env.release_is_draft != 'true'
+        if: steps.check-release-exists.outcome == 'success' && env.release_is_draft != 'true'
         shell: bash
         run: exit 1
 
