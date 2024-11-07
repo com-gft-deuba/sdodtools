@@ -123,7 +123,7 @@ runs:
         echo "build_version=$build_version" >> "$GITHUB_ENV"
 
     - name: Check for valid override version
-      if: ! empty(env.build_version_override)
+      if: env.build_version_override != ''
       id: check-valid-version-override
       shell: bash
       run: |
