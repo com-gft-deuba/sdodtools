@@ -139,7 +139,8 @@ jobs:
             --draft \
             --generate-notes \
             --title "Release of version '${{ needs.build.outputs.version }}'" \
-            dist/*
+            "dist/$distribution" \
+            dist/META/*
 
       - name: Set output
         id: set-output
