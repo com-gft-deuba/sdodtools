@@ -112,12 +112,31 @@ runs:
       shell: bash
       run: |
 
-        if [[ ! "$build_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([0-9.]+)?$ ]] ; then 
+        if [[ ! "$build_version" =~ ^v*[0-9]+\.[0-9]+\.[0-9]+([0-9.]+)?$ ]] ; then 
 
           echo "Invalid build_version format: '$build_version'. Aborting."
           exit 1
 
         fi
+
+        build_version=$( echo "$build_version" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\([0-9.]*\)*$\)/\1/p" )
+        echo "build_version=$build_version" >> "$GITHUB_ENV"
+
+    - name: Check for valid override version
+      if: ! empty(env.build_version_override)
+      id: check-valid-version-override
+      shell: bash
+      run: |
+
+        if [[ ! "$build_version_override" =~ ^v*[0-9]+\.[0-9]+\.[0-9]+([0-9.]+)?$ ]] ; then 
+
+          echo "Invalid build_version_override format: '$build_version_override'. Aborting."
+          exit 1
+
+        fi
+
+        build_version_override=$( echo "$build_version_override" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\([0-9.]*\)*$\)/\1/p" )
+        echo "build_version_override=$build_version_override" >> "$GITHUB_ENV"
 
     # Setup build environment
 
