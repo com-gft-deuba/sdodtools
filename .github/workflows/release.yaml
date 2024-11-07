@@ -59,114 +59,103 @@ jobs:
           build_directory: .
           build_tag: ${{ env.release_tag }}
 
+      - name: Setup Environment from checkout
+        id: setup-environment-from-checkout
+        shell: bash
+        run: |
+          echo "build_stamp=${{ steps.checkout.outputs.build_stamp }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ steps.checkout.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ steps.checkout.outputs.build_tag }}" >> "$GITHUB_ENV"
+          echo "build_version=${{ steps.checkout.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.checkout.outputs.build_ref }}" >> "$GITHUB_ENV"
+
+      - name: Check if release exists
+        id: check-release-exists
+        continue-on-error: true
+        shell: bash
+        run: |
+          gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag" > release_info.json
+
+      - name: Abort if neither release nor tag found
+        id: abort-missing-release-and-tag
+        if: steps.check-release-exists.outcome != 'success' && steps.checkout.outcome != 'success'
+        shell: bash
+        run: exit 1
+
+      - name: Setup environment from release
+        id: setup-environment-from-release
+        if: steps.check-release-exists.outcome == 'success'
+        shell: bash
+        run: |
+          output=$( cat release_info.json )
+          release_id=$( echo "$output" | jq -r .id - )
+          release_is_draft=$( echo "$output" | jq -r .isDraft - )
+          echo "release_type=augment" >> "$GITHUB_ENV"
+          echo "release_id=$release_id" >> "$GITHUB_ENV"
+          echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
+
+      - name: Abort if found release is not a draft
+        id: abort-release-is-no-draft
+        if: steps.check-release-exists.outcome == 'success' && env.release_is_draft != 'true'
+        shell: bash
+        run: exit 1
+
+      - name: Show env
+        id: show-env
+        shell: bash
+        run: |
+          env | sort
+
+      - name: Building distribution
+        id: build
+        uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
+        with:
+          build_directory: .
+          build_tag: ${{ env.build_tag }}
+          build_version: ${{ env.build_version }}
+          build_version_override: ''
+          build_type: ${{ env.build_type }}
+          build_ref: ${{ env.build_ref }}
+
+      - name: Setup Environment from build
+        id: setup-environment-from-build
+        shell: bash
+        run: |
+          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
+          echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
+          echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
+
       - name: Create new release
         id: release-create
+        if: env.release_type == 'new'
         shell: bash
         run: |
           gh release create \
             "$release_tag" \
-            --target "$release_tag" \
+            --verify-tag \
             --draft \
-            --title "Release of version '${{ needs.build.outputs.version }}'" 
+            --generate-notes \
+            --title "Release of version '${{ needs.build.outputs.version }}'" \
+            dist/*
 
-      # - name: Setup Environment from checkout
-      #   id: setup-environment-from-checkout
-      #   shell: bash
-      #   run: |
-      #     echo "build_stamp=${{ steps.checkout.outputs.build_stamp }}" >> "$GITHUB_ENV"
-      #     echo "build_type=${{ steps.checkout.outputs.build_type }}" >> "$GITHUB_ENV"
-      #     echo "build_tag=${{ steps.checkout.outputs.build_tag }}" >> "$GITHUB_ENV"
-      #     echo "build_version=${{ steps.checkout.outputs.build_version }}" >> "$GITHUB_ENV"
-      #     echo "build_ref=${{ steps.checkout.outputs.build_ref }}" >> "$GITHUB_ENV"
+      - name: Set output
+        id: set-output
+        shell: bash
+        run: |
+          echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
+          echo "build_type=$build_type"       >> "$GITHUB_OUTPUT"
+          echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
+          echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
+          echo "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
 
-      # - name: Check if release exists
-      #   id: check-release-exists
-      #   continue-on-error: true
-      #   shell: bash
-      #   run: |
-      #     gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag" > release_info.json
-
-      # - name: Abort if neither release nor tag found
-      #   id: abort-missing-release-and-tag
-      #   if: steps.check-release-exists.outcome != 'success' && steps.checkout.outcome != 'success'
-      #   shell: bash
-      #   run: exit 1
-
-      # - name: Setup environment from release
-      #   id: setup-environment-from-release
-      #   if: steps.check-release-exists.outcome == 'success'
-      #   shell: bash
-      #   run: |
-      #     output=$( cat release_info.json )
-      #     release_id=$( echo "$output" | jq -r .id - )
-      #     release_is_draft=$( echo "$output" | jq -r .isDraft - )
-      #     echo "release_type=augment" >> "$GITHUB_ENV"
-      #     echo "release_id=$release_id" >> "$GITHUB_ENV"
-      #     echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
-
-      # - name: Abort if found release is not a draft
-      #   id: abort-release-is-no-draft
-      #   if: steps.check-release-exists.outcome == 'success' && env.release_is_draft != 'true'
-      #   shell: bash
-      #   run: exit 1
-
-      # - name: Show env
-      #   id: show-env
-      #   shell: bash
-      #   run: |
-      #     env | sort
-
-      # - name: Building distribution
-      #   id: build
-      #   uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
-      #   with:
-      #     build_directory: .
-      #     build_tag: ${{ env.build_tag }}
-      #     build_version: ${{ env.build_version }}
-      #     build_version_override: ''
-      #     build_type: ${{ env.build_type }}
-      #     build_ref: ${{ env.build_ref }}
-
-      # - name: Setup Environment from build
-      #   id: setup-environment-from-build
-      #   shell: bash
-      #   run: |
-      #     echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
-      #     echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
-      #     echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
-      #     echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
-      #     echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
-      #     echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
-
-      # - name: Create new release
-      #   id: release-create
-      #   if: env.release_type == 'new'
-      #   shell: bash
-      #   run: |
-      #     gh release create \
-      #       "$release_tag" \
-      #       --target "$release_tag" \
-      #       --verify-tag \
-      #       --draft \
-      #       --generate-notes \
-      #       --title "Release of version '${{ needs.build.outputs.version }}'" \
-      #       dist/*
-
-      # - name: Set output
-      #   id: set-output
-      #   shell: bash
-      #   run: |
-      #     echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
-      #     echo "build_type=$build_type"       >> "$GITHUB_OUTPUT"
-      #     echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
-      #     echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
-      #     echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
-      #     echo "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
-
-      #     echo "Set distribution='$distribution'."
-      #     echo "Set build_type='$build_type'."
-      #     echo "Set build_version='$build_version'."
-      #     echo "Set build_version_override='$build_version_override'."
-      #     echo "Set build_tag='$build_tag'."
-      #     echo "Set build_ref='$build_ref'."
+          echo "Set distribution='$distribution'."
+          echo "Set build_type='$build_type'."
+          echo "Set build_version='$build_version'."
+          echo "Set build_version_override='$build_version_override'."
+          echo "Set build_tag='$build_tag'."
+          echo "Set build_ref='$build_ref'."
 
