@@ -40,88 +40,77 @@ jobs:
         shell: bash
         run: |
           echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_ENV"
+          echo "release_type=new" >> "$GITHUB_ENV"
 
-      - name: Check for valid tag format
-        id: check-valid-tag
+      - name: Checkout
+        id: checkout
+        uses: com-gft-deuba/sdodtools/.github/actions/checkout-tag@develop-workflows
+        with:
+          build_directory: .
+          build_tag: ${{ env.release_tag }}
+
+      - name: Setup Environment from checkout
+        id: setup-environment-from-checkout
         shell: bash
         run: |
-          if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
+          echo "build_stamp=${{ steps.checkout.outputs.build_stamp }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ steps.checkout.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ steps.checkout.outputs.build_tag }}" >> "$GITHUB_ENV"
+          echo "build_version=${{ steps.checkout.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.checkout.outputs.build_ref }}" >> "$GITHUB_ENV"
 
-            echo "Invalid tag format: '$release_tag'. Setting release type 'error'."
-            echo "release_type=error" >> "$GITHUB_ENV"
-            exit 1
+      # - name: Building distribution
+      #   id: build
+      #   uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
+      #   with:
+      #     build_directory: .
+      #     build_tag: ${{ env.build_tag }}
+      #     build_version: ${{ env.build_version }}
+      #     build_version_override: ${{ env.build_version_override }}
+      #     build_type: ${{ env.build_type }}
+      #     build_ref: ${{ env.build_ref }}
 
-          fi
+      # - name: Setup Environment from build
+      #   id: setup-environment-from-build
+      #   shell: bash
+      #   run: |
+      #     echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
+      #     echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
+      #     echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
+      #     echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
+      #     echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
+      #     echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
 
-          echo "Found valid tag format '$release_tag'."
-          echo "release_tag=$release_tag" >> "$GITHUB_ENV"
-
-      - name: Checkout TAG
-        id: checkout-tag
+      - name: Check if release exists
+        id: check-release-exists
         continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 1
-          fetch-tags: true
-          ref: refs/tags/${{ env.release_tag }}
-
-      - name: Checkout HEAD
-        id: checkout-head
-        if: steps.checkout-tag.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 1
-          fetch-tags: true
-
-      - name: Check for release type
-        id: check-release-type
         shell: bash
         run: |
-
-          set +e
           gh release view --json "id,isDraft,apiUrl,tagName,uploadUrl,url,assets" "$release_tag" > release_info.json
-          status=$?
-          set -e
 
-          if [[ $status -ne 0 ]] ; then
+      - name: Abort if neither release nor tag found
+        id: abort-missing-release-and-tag
+        if: steps.check-release-exists.outcome != 'success' and steps.checkout-tag.outcome != 'success'
+        shell: bash
+        run: exit 1
 
-            if [[ '${{ steps.checkout-tag.outcome }}' == 'failure' ]] ; then
-
-              echo "Neither tag nor release '$release_tag' not found. Aborting!"
-              echo "release_type=error" >> "$GITHUB_ENV"
-              echo "release_id=" >> "$GITHUB_ENV"
-              echo "release_is_draft=false" >> "$GITHUB_ENV"
-              exit 1
-
-            fi
-
-            echo "Tag found but no release '$release_tag' not found, will create a new one."
-            echo "release_type=new" >> "$GITHUB_ENV"
-            echo "release_id=" >> "$GITHUB_ENV"
-            echo "release_is_draft=true" >> "$GITHUB_ENV"
-            exit 0
-
-          fi
-
+      - name: Setup environment from release
+        id: setup-environment-from-release
+        if: steps.check-release-exists.outcome == 'success'
+        shell: bash
+        run: |
+          output=$( cat release_info.json )
           release_id=$( echo "$output" | jq -r .id - )
           release_is_draft=$( echo "$output" | jq -r .isDraft - )
-
-          if [[ "$release_is_draft" != "true" ]]; then
-
-            echo "Found '$release_tag' with id '$release_id' but it is NOT a draft. Aborting!"
-            echo "release_type=error" >> "$GITHUB_ENV"
-            echo "release_id=$release_id" >> "$GITHUB_ENV"
-            echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
-            exit 1
-
-          fi
-
-          echo "Release draft '$release_tag' with id '$release_id' found. Setting release_type to 'augment'."
           echo "release_type=augment" >> "$GITHUB_ENV"
           echo "release_id=$release_id" >> "$GITHUB_ENV"
           echo "release_is_draft=$release_is_draft" >> "$GITHUB_ENV"
+
+      - name: Abort if found release is not a draft
+        id: abort-release-is-no-draft
+        if: steps.check-release-exists.outcome == 'success' and env.release_is_draft != 'true'
+        shell: bash
+        run: exit 1
 
       - name: Show env
         id: show-env
@@ -134,31 +123,6 @@ jobs:
         with:
           build_tag: ${{ env.release_tag }}
 
-      # - name: GitHub Release
-      #   id: github-release
-      #   env:
-      #     ANNOUNCEMENT_TITLE: "${{ fromJson(needs.host.outputs.val).announcement_title }}"
-      #     ANNOUNCEMENT_BODY: "${{ fromJson(needs.host.outputs.val).announcement_github_body }}"
-      #     RELEASE_COMMIT: "${{ github.sha }}"
-      #   run: |
-      #     # Write and read notes from a file to avoid quoting breaking things
-      #     echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
-
-      #     gh release create \
-      #       "v${{ needs.build.outputs.version }}" \
-      #       --target "$RELEASE_COMMIT" \
-      #       --prerelease \
-      #       --title "Release of version '${{ needs.build.outputs.version }}'" \
-      #       dist/*
-            
-      #       # --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
-
-
-
-
-
-
-
       - name: Building distribution
         id: build
         uses: ./.github/actions/build-directory
@@ -169,14 +133,34 @@ jobs:
           build_version_override: ${{ env.build_version_override }}
           build_type: ${{ env.build_type }}
 
+      - name: Setup Environment from build
+        id: setup-environment-from-build
+        shell: bash
+        run: |
+          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
+          echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
+          echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
+
+      - name: Create new release
+        id: release-create
+        if: env.release_type == 'new'
+        shell: bash
+        run: |
+          gh release create \
+            "$release_tag" \
+            --target "$release_tag" \
+            --verify-tag \
+            --draft \
+            --title "Release of version '${{ needs.build.outputs.version }}'" \
+            dist/*
+
       - name: Set output
         id: set-output
         shell: bash
         run: |
-          distribution='${{ steps.build.outputs.distribution }}'
-          build_ref='${{ steps.build.outputs.build_ref }}'
-          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
-          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
           echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
           echo "build_type=$build_type"       >> "$GITHUB_OUTPUT"
           echo "build_version=$build_version" >> "$GITHUB_OUTPUT"

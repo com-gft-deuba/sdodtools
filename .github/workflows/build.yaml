@@ -87,15 +87,21 @@ jobs:
           build_type: ${{ env.build_type }}
           build_ref: ${{ env.build_ref }}
 
+      - name: Setup Environment from build
+        id: setup-environment-from-build
+        shell: bash
+        run: |
+          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
+          echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
+          echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
+          echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
+          echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
+          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
+
       - name: Set output
         id: set-output
         shell: bash
         run: |
-          distribution='${{ steps.build.outputs.distribution }}'
-          build_ref='${{ steps.build.outputs.build_ref }}'
-          echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
-          echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
-          
           echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
           echo "build_type=$build_type"       >> "$GITHUB_OUTPUT"
           echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
