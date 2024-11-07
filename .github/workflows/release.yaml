@@ -155,7 +155,7 @@ jobs:
             --verify-tag \
             --draft \
             --generate-notes \
-            --title "Release of version '${{ needs.build.outputs.version }}'" \
+            --title "Release of version '$release_version'" \
             "dist/$distribution" \
             dist/META-*.tar.gz
 
