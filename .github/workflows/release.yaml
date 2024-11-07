@@ -118,20 +118,16 @@ jobs:
         run: |
           env | sort
 
-      - name: Starting build of release
-        uses: ./.github/workflows/build
-        with:
-          build_tag: ${{ env.release_tag }}
-
       - name: Building distribution
         id: build
-        uses: ./.github/actions/build-directory
+        uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
         with:
           build_directory: .
           build_tag: ${{ env.build_tag }}
           build_version: ${{ env.build_version }}
-          build_version_override: ${{ env.build_version_override }}
+          build_version_override: ''
           build_type: ${{ env.build_type }}
+          build_ref: ${{ env.build_ref }}
 
       - name: Setup Environment from build
         id: setup-environment-from-build
