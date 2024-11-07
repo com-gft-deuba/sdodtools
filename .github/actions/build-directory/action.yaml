@@ -58,6 +58,7 @@ outputs:
 runs:
 
   using: "composite"
+
   steps:
 
     # Valid build tags need to match the format 'vX.Y.Z'
