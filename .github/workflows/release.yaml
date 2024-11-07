@@ -128,6 +128,23 @@ jobs:
           echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
           echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
 
+      - name: Packag meta info
+        id: package-meta
+        shell: bash
+        run: |
+          if [[ -z "$build_version_override" ]] ; then
+
+            version="$build_version"
+
+          else
+
+            version="$build_version_override"
+
+          fi
+
+          cd dist/META
+          tar -czf "../META-$version.tar.gz" .
+
       - name: Create new release
         id: release-create
         if: env.release_type == 'new'
@@ -140,7 +157,17 @@ jobs:
             --generate-notes \
             --title "Release of version '${{ needs.build.outputs.version }}'" \
             "dist/$distribution" \
-            dist/META/*
+            dist/META-*.tar.gz
+
+      - name: Create augment release
+        id: release-augment
+        if: env.release_type == 'augment'
+        shell: bash
+        run: |
+          gh release upload \
+            "$release_tag" \
+            "dist/$distribution" \
+            dist/META-*.tar.gz
 
       - name: Set output
         id: set-output
