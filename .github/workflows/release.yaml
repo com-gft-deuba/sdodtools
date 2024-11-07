@@ -166,11 +166,13 @@ jobs:
         run: |
           set +e
           while read f ; do
+            echo "Trying to delete asset '$f' from release '$release_tag'."
             gh release delete-asset \
               "$release_tag" \
               "$f"
           done < <( cd dist && ls -1 "$dist" META-*.tar.gz 2>/dev/null)
           set -e
+          echo "Augmenting release."
           gh release upload \
             "$release_tag" \
             "dist/$distribution" \
