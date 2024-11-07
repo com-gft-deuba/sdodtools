@@ -131,11 +131,11 @@ runs:
         if [[ -z "$build_version" ]] ; then
         
           echo "Substituting build_version with build_tag '$build_tag'."
-          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*\(\.[0-9.]*\)*\)/\1/p" )
+          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*$\)/\1/p" )
           
         fi
 
-        if [[ ! "$build_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then 
+        if [[ ! "$build_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([0-9.]+)?$ ]] ; then 
 
           echo "Invalid build_version format: '$build_version'. Aborting."
           exit 1
