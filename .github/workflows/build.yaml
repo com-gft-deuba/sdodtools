@@ -48,6 +48,13 @@ jobs:
           echo "build_tag=${{inputs.build_tag}}" >> "$GITHUB_ENV"
           echo "build_version_override=${{inputs.build_version_override}}" >> "$GITHUB_ENV"
 
+      - name: Debug
+        id: debug
+        shell: bash
+        run: |
+          pwd
+          find . -path '*checkout-tag*' -ls
+
       # - name: Checkout TAG
       #   id: checkout-tag
       #   if: env.build_tag != 'dry-run'
