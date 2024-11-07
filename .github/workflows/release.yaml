@@ -164,6 +164,12 @@ jobs:
         if: env.release_type == 'augment'
         shell: bash
         run: |
+          set +e
+          gh release delete-asset \
+            "$release_tag" \
+            "dist/$distribution" \
+            dist/META-*.tar.gz
+          set -e
           gh release upload \
             "$release_tag" \
             "dist/$distribution" \
