@@ -11,17 +11,17 @@ inputs:
 
   build_directory:
     description: Directory with the checked out sources
-    required: false
+    required: true
     default: .
 
   build_version:
     description: Version number of the artifact
-    required: false
+    required: true
     default: dry-run
 
   build_version_override:
     description: Override of the build version
-    required: false
+    required: true
     default: ""
 
   build_type:
@@ -29,6 +29,15 @@ inputs:
     required: true
     default: "dry-run"
 
+  build_ref:
+    description: Hash of the current checkout
+    required: true
+    default: "dry-run"
+
+  build_stamp:
+    description: Timestamp for the build
+    required: true
+    default: "dry-run"
 outputs:
 
   distribution:
@@ -52,8 +61,12 @@ outputs:
     value: ${{ steps.set-output.outputs.build_tag }}
 
   build_ref:
-    description: Build ref
+    description: Git hash of the build
     value: ${{ steps.set-output.outputs.build_ref }}
+
+  build_stamp:
+    description: Timestamp of the build
+    value: ${{ steps.set-output.outputs.build_stamp }}
 
 runs:
 
@@ -68,44 +81,15 @@ runs:
       shell: bash
       run: |
 
+        if [[ -z "${{ inputs.build_stamp }}" ]] ; then build_stamp=$( date +%Y%m%d%H%M%S ) ; fi
+        if [[ -z "${{ inputs.build_ref }}" ]] ; then build_ref="$( git rev-parse HEAD )" ; fi
+
         echo "build_tag=${{inputs.build_tag}}" >> "$GITHUB_ENV"
         echo "build_directory=${{inputs.build_directory}}" >> "$GITHUB_ENV"
         echo "build_version=${{inputs.build_version}}" >> "$GITHUB_ENV"
         echo "build_version_override=${{inputs.build_version_override}}" >> "$GITHUB_ENV"
-
-        build_stamp=$( date +%Y%m%d%H%M%S )
-        build_ref="$( git rev-parse HEAD )"
         echo "build_stamp=$build_stamp" >> "$GITHUB_ENV"
         echo "build_ref=$build_ref" >> "$GITHUB_ENV"
-
-    - name: Set build_tag from git
-      id: Set-build-version
-      if: env.build_type == 'dry-run' && env.build_stamp != ''
-      shell: bash
-      run: |
-
-        set +e
-        build_tag=$( git tag --merged | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
-        set -e
-
-        if [[ -z "$build_tag" ]] ; then 
-
-          echo "No build_tag found in current branch, checking full repo."
-          set +e
-          build_tag=$( git tag --list 'v*' | grep -v "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 )
-          set -e
-
-        fi
-
-        if [[ -z "$build_tag" ]] ; then 
-
-            build_tag="v0.0.1"
-            echo "No build_tag found in repo, using '$build_tag'."
-
-        fi
-
-        echo "Setting build_tag to '$build_tag'."
-        echo "build_tag=$build_tag" >> "$GITHUB_ENV"
 
     # Check and cleanup the build version
 
@@ -123,17 +107,10 @@ runs:
 
     # Check the tag and version
 
-    - name: Check and fix version
+    - name: Check for valid version
       id: check-valid-version
       shell: bash
       run: |
-
-        if [[ -z "$build_version" ]] ; then
-        
-          echo "Substituting build_version with build_tag '$build_tag'."
-          build_version=$( echo "$build_tag" | sed -n "s/^v*\([0-9]*\.[0-9]*\.[0-9]*$\)/\1/p" )
-          
-        fi
 
         if [[ ! "$build_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([0-9.]+)?$ ]] ; then 
 
@@ -141,16 +118,6 @@ runs:
           exit 1
 
         fi
-
-        if [[ "$build_type" == "dry-run" ]] ; then 
-
-          echo "Extending build_version with build_stamp '$build_stamp' for 'dry-run'."
-          build_version="$build_version.$build_stamp"
-
-        fi
-
-        echo "Found valid build version '$build_version'."
-        echo "build_version=$build_version" >> "$GITHUB_ENV"
 
     # Setup build environment
 
@@ -182,14 +149,15 @@ runs:
           'build_type': None,
           'build_ref': None,
           'build_tag': None,
+          'build_stamp': None,
         }
 
         for key in variables.keys():
 
           if key not in os.environ:
 
-            print(f"Error: Environment variable '{key}' not found!")
-            sys.exit(10)
+            variables[key] = ''
+            continue
 
           variables[key] = os.environ[key]
 
@@ -217,7 +185,18 @@ runs:
       shell: bash
       run: |
         find dist -type f -ls
-        distribution=$( cd dist && ls -1 *"-$build_version.tar.gz" | head -1 )
+
+        if [[ ! -z "$build_version_override" ]]; then
+
+          dist_version="$build_version_override"
+
+        else
+
+          dist_version="$build_version"
+
+        fi
+
+        distribution=$( cd dist && ls -1 *"-$dist_version.tar.gz" | head -1 )
         echo "distribution=$distribution" >> "$GITHUB_ENV"
 
     # Write some meta information to the artifact and set the output of the job
@@ -239,18 +218,21 @@ runs:
 
         fi
 
+        echo "$build_stamp"     > dist/META/STAMP
+
     # Set the output for the build job
 
     - name: Set output
       id: set-output
       shell: bash
       run: |
-        echo "distribution=$distribution"   >> "$GITHUB_OUTPUT"
-        echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
-        echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+        echo "distribution=$distribution"                     >> "$GITHUB_OUTPUT"
+        echo "build_type=$build_type"                         >> "$GITHUB_OUTPUT"
+        echo "build_version=$build_version"                   >> "$GITHUB_OUTPUT"
         echo "build_version_override=$build_version_override" >> "$GITHUB_OUTPUT"
-        echo "build_tag=$build_tag"         >> "$GITHUB_OUTPUT"
-        echo "build_ref=$build_ref"         >> "$GITHUB_OUTPUT"
+        echo "build_tag=$build_tag"                           >> "$GITHUB_OUTPUT"
+        echo "build_ref=$build_ref"                           >> "$GITHUB_OUTPUT"
+        echo "build_stamp=$build_stamp"                       >> "$GITHUB_OUTPUT"
 
         echo "Set distribution='$distribution'."
         echo "Set build_type='$build_type'."
@@ -258,6 +240,7 @@ runs:
         echo "Set build_version_override='$build_version_override'."
         echo "Set build_tag='$build_tag'."
         echo "Set build_ref='$build_ref'."
+        echo "Set build_stamp='$build_stamp'."
 
     - name: "Upload artifacts"
       id: upload-artifact
