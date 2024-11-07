@@ -127,9 +127,9 @@ jobs:
       - name: Checkout
         id: checkout
         uses: com-gft-deuba/sdodtools/.github/actions/checkout-tag@develop-workflows
-        # with:
-        #   build_directory: .
-        #   build_tag: ${{ env.build_tag }}
+        with:
+          build_directory: .
+          build_tag: ${{ env.build_tag }}
 
       - name: Setup Environment from checkout
         id: setup-environment-from-checkout
@@ -165,7 +165,7 @@ jobs:
 
       - name: Building distribution
         id: build
-        uses: ./.github/actions/build-directory
+        uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
         with:
           build_directory: .
           build_tag: ${{ env.build_tag }}
