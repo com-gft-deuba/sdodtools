@@ -59,28 +59,6 @@ jobs:
           echo "build_version=${{ steps.checkout.outputs.build_version }}" >> "$GITHUB_ENV"
           echo "build_ref=${{ steps.checkout.outputs.build_ref }}" >> "$GITHUB_ENV"
 
-      # - name: Building distribution
-      #   id: build
-      #   uses: com-gft-deuba/sdodtools/.github/actions/build-directory@develop-workflows
-      #   with:
-      #     build_directory: .
-      #     build_tag: ${{ env.build_tag }}
-      #     build_version: ${{ env.build_version }}
-      #     build_version_override: ${{ env.build_version_override }}
-      #     build_type: ${{ env.build_type }}
-      #     build_ref: ${{ env.build_ref }}
-
-      # - name: Setup Environment from build
-      #   id: setup-environment-from-build
-      #   shell: bash
-      #   run: |
-      #     echo "distribution=${{ steps.build.outputs.distribution }}" >> "$GITHUB_ENV"
-      #     echo "build_stamp=${{ steps.build.outputs.build_stamp }}" >> "$GITHUB_ENV"
-      #     echo "build_type=${{ steps.build.outputs.build_type }}" >> "$GITHUB_ENV"
-      #     echo "build_tag=${{ steps.build.outputs.build_tag }}" >> "$GITHUB_ENV"
-      #     echo "build_version=${{ steps.build.outputs.build_version }}" >> "$GITHUB_ENV"
-      #     echo "build_ref=${{ steps.build.outputs.build_ref }}" >> "$GITHUB_ENV"
-
       - name: Check if release exists
         id: check-release-exists
         continue-on-error: true
@@ -90,7 +68,7 @@ jobs:
 
       - name: Abort if neither release nor tag found
         id: abort-missing-release-and-tag
-        if: steps.check-release-exists.outcome != 'success' && steps.checkout-tag.outcome != 'success'
+        if: steps.check-release-exists.outcome != 'success' && steps.checkout.outcome != 'success'
         shell: bash
         run: exit 1
 
