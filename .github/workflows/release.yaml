@@ -65,6 +65,7 @@ jobs:
         run: |
           gh release create \
             "$release_tag" \
+            --target "$release_tag" \
             --draft \
             --title "Release of version '${{ needs.build.outputs.version }}'" 
 
