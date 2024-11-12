@@ -60,7 +60,7 @@ class KeyIV:
         return cls(*args, key=d[:key_length], iv=d[key_length:key_length+iv_length], **kwargs)
 
     @classmethod
-    def from_bytes(cls, b):
+    def from_bytes(cls, b, *args, **kwargs):
 
         if not b.startswith(b'['):
 
