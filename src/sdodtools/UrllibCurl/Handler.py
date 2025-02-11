@@ -15,10 +15,11 @@ from .. import Cli
 ##############################################################################
 ##############################################################################
 
-class CurlHandler(urllib.request.HTTPHandler):
+class CurlHandler(urllib.request.BaseHandler):
 
     def __init__(self, proxy_maps=None, server_auth=None):
 
+        print("INIT")
         self.proxy_maps = proxy_maps
         self.server_auth = server_auth
 
