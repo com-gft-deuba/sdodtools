@@ -3,7 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-dynamic = ["version"]
+# build_version = '{{ build_version }}'
+# build_version_override = '{{ build_version_override}}'
+# build_type = '{{ build_type }}'
+# build_ref = '{{ build_ref }}'
+# build_tag = '{{ build_tag }}'
+version = "{{ build_version if ( ( build_version_override is none ) or ( build_version_override|length == 0 ) ) else build_version_override }}"
 name = "sdodtools_briconaut"
 description = "A set of small helpers to overcome SDOD limitations."
 authors = [
@@ -34,6 +39,3 @@ Issues = "https://github.com/com-gft-deuba/sdodtools/issues"
 crypt_manage ="sdodtools.crypt_manage:main"
 
 [tool.setuptools]
-
-[tool.setuptools.dynamic]
-version = { attr = "sdodtools.__version__" }

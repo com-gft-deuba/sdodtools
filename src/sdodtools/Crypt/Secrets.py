@@ -17,7 +17,8 @@ class SecretFactory:
 
     RE_FILEPATTERN = re.compile(r'^(?P<domain>[^_.]+)_(?P<name>[^_.]+)\.(?P<category>[^_.]+)')
     KEY_PREFIX = '.secret'
-    FileInfo = collections.namedtuple('FileInfo', ['domain', 'name', 'category', 'path', 'filename'])
+    SecretInfo = collections.namedtuple('SecretInfo', ['basedir', 'prefix', 'domain', 'name', 'category', 'path', 'filename'])
+    KeyInfo = collections.namedtuple('KeyInfo', ['basedir', 'prefix', 'path', 'filename'])
 
     @classmethod
     def from_bytes(cls, b, key=None):
@@ -48,11 +49,21 @@ class SecretFactory:
 
         if secret is None: return
 
+        if basedir is None: basedir = secret.basedir
+
         if basedir is None: basedir = '.'
+
+        if prefix is None: prefix = secret.prefix
 
         if prefix is None: prefix = cls.KEY_PREFIX
 
-        filename = os.path.join(basedir, f"{prefix}-{secret.domain}_{secret.name}.{secret.category}") 
+        if isinstance(secret, SecretFactory.KeyInfo):
+
+            filename = os.path.join(basedir, f"{prefix}-key") 
+
+        else:
+
+            filename = os.path.join(basedir, f"{prefix}-{secret.domain}_{secret.name}.{secret.category}") 
 
         if os.path.exists(filename) and not overwrite: raise Exception(f"File '{filename}' already exists!")
 
@@ -63,11 +74,11 @@ class SecretFactory:
         return filename
 
     @classmethod
-    def load(cls, filename, key=None):
+    def load(cls, fileinfo, key=None):
 
-        if not isinstance(filename, str): filename = filename.path
+        if not isinstance(fileinfo, str): fileinfo = fileinfo.path
 
-        with open(filename, "rb") as f:
+        with open(fileinfo, "rb") as f:
 
             content = f.read()
             secret, rest = SecretFactory.from_bytes(content, key=key)
@@ -77,11 +88,13 @@ class SecretFactory:
     @classmethod
     def find_secrets(cls, basedir=None, prefix=None):
 
-        if basedir is None: basedir = '.'
+        if basedir is None: basedir = '~/'
+
+        basedir = os.path.expanduser(basedir) 
 
         if prefix is None: prefix = cls.KEY_PREFIX
 
-        if prefix is None:
+        if prefix is None or len(prefix) == 0:
 
             _prefix = ''
 
@@ -89,7 +102,8 @@ class SecretFactory:
 
             _prefix = prefix + '-'
 
-        infos = []
+        secret_infos = []
+        key_info = None
 
         for obj in os.listdir(basedir):
 
@@ -101,15 +115,21 @@ class SecretFactory:
 
             fileid = obj[len(_prefix):]
 
+            if fileid == 'key':
+
+                info = cls.KeyInfo(basedir=basedir, prefix=prefix, path=filename, filename=obj)
+                key_info = info
+                continue
+
             matches = cls.RE_FILEPATTERN.match(fileid)
 
             if matches is None: continue
 
-            info = cls.FileInfo(domain=matches.group('domain'), name=matches.group('name'), category=matches.group('category'), path=filename, filename=obj)
+            info = cls.SecretInfo(basedir=basedir, prefix=prefix, domain=matches.group('domain'), name=matches.group('name'), category=matches.group('category'), path=filename, filename=obj)
 
-            infos.append(info)
+            secret_infos.append(info)
 
-        return infos
+        return key_info, secret_infos
 
 ##############################################################################
 ##############################################################################
@@ -227,7 +247,7 @@ class Secret:
 
         return secret
 
-    def __init__(self, key, **argv) -> None:
+    def __init__(self, key=None, **argv) -> None:
 
         self.__dict__['key'] = key
         self.__dict__['_class_signature'] =  "<" + ".".join([type(self).__module__, type(self).__qualname__]) + ">" 
@@ -386,4 +406,4 @@ class Cookie(Secret):
 
 class Token(Cookie):
 
-    pass
+    KEYWORDS = ['header', 'token']

@@ -121,7 +121,7 @@ def main(argv=None):
 
             if args.password is not None and len(args.password) > 0:
 
-                key = sdodtools.Crypt.Keys.KeyIV.from_password( salt=args.salt, count=args.iterations, key_length=args.length, iv_length=args.int(length//2, password=args.password))
+                key = sdodtools.Crypt.Keys.KeyIV.from_password( salt=args.salt, count=args.iterations, key_length=args.length, iv_length=args.int(args.length/2), password=args.password)
 
             else:
 

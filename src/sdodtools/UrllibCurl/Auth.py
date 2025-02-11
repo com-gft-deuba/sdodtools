@@ -4,34 +4,54 @@
 ##############################################################################
 ##############################################################################
 
+from .. import Crypt
+
 ##############################################################################
 ##############################################################################
 
-class Auth:
+class ServerAuth:
 
     def __init__(self, secret) -> None: self.secret = secret
 
-    def options(self): return []
+    @classmethod
+    def from_secret(cls, secret):
+            
+            if isinstance(secret, Crypt.Secrets.Container): _secret = secret.secret
+            else: _secret = secret
+    
+            if isinstance(_secret, Crypt.Secrets.Login): return ServerAuthLogin(secret=secret)
+    
+            if isinstance(_secret, Crypt.Secrets.Token): return ServerAuthToken(secret=secret)
+    
+            if isinstance(_secret, Crypt.Secrets.Cookie): return ServerAuthCookie(secret=secret)
+    
+            raise ValueError(f"Unknown secret type {type(_secret)}!")
 
-class AuthNone(Auth):
+    def options(self, obfuscate=False): return []
+
+class ServerAuthNone(ServerAuth):
 
     def __init__(self, secret=None) -> None: super().__init__(secret=secret)
 
-class AuthLogin(Auth):
+class ServerAuthLogin(ServerAuth):
 
-    def options(self): return ["--basic", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--basic", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode() if not obfuscate else '***' }"]
 
-class AuthDigest(AuthLogin):
+class ServerAuthDigest(ServerAuthLogin):
 
-    def options(self): return ["--digest", "--user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--digest", "--user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode() if not obfuscate else '***' }"]
 
-class AuthNTLM(AuthLogin):
+class ServerAuthNTLM(ServerAuthLogin):
 
-    def options(self): return ["--ntlm", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--ntlm", "--user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode() if not obfuscate else '***' }"]
 
-class AuthCookie(Auth):
+class ServerAuthCookie(ServerAuth):
 
-    def options(self): return ["--header", f"{self.secret.header.decode()}: {self.secret.value.decode()}"]
+    def options(self, obfuscate=False): return ["--header", f"{self.secret.header.decode()}: {self.secret.value.decode() if not obfuscate else '***' }"]
+
+class ServerAuthToken(ServerAuth):
+
+    def options(self, obfuscate=False): return ["--header", f"{self.secret.header.decode()}: {self.secret.token.decode() if not obfuscate else '***' }"]
 
 ##############################################################################
 ##############################################################################
@@ -42,7 +62,21 @@ class ProxyAuth:
 
         self.secret = secret
 
-    def options(self): return []
+    @classmethod
+    def from_secret(cls, secret):
+    
+            if isinstance(secret, Crypt.Secrets.Container): _secret = secret.secret
+            else: _secret = secret
+
+            if isinstance(_secret, Crypt.Secrets.Login): return ProxyAuthLogin(secret=secret)
+    
+            if isinstance(_secret, Crypt.Secrets.Token): return ProxyAuthToken(secret=secret)
+    
+            if isinstance(_secret, Crypt.Secrets.Cookie): return ProxyAuthCookie(secret=secret)
+    
+            raise ValueError(f"Unknown secret type {type(_secret)}!")
+
+    def options(self, obfuscate=False): return []
 
 class ProxyAuthNone(ProxyAuth):
 
@@ -50,16 +84,21 @@ class ProxyAuthNone(ProxyAuth):
 
 class ProxyAuthLogin(ProxyAuth):
 
-    def options(self): return ["--proxy-basic", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--proxy-basic", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode() if not obfuscate else '***' }"]
 
 class ProxyAuthDigest(ProxyAuthLogin):
 
-    def options(self): return ["--proxy-digest", "--proxy-user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--proxy-digest", "--proxy-user", f"{self.login.clearuser.decode()}:{self.login.clearpassword.decode() if not obfuscate else '***' }"]
 
 class ProxyAuthNTLM(ProxyAuthLogin):
 
-    def options(self): return ["--proxy-ntlm", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode()}"]
+    def options(self, obfuscate=False): return ["--proxy-ntlm", "--proxy-user", f"{self.secret.clearuser.decode()}:{self.secret.clearpassword.decode() if not obfuscate else '***' }"]
 
 class ProxyAuthCookie(ProxyAuth):
 
-    def options(self): return ["--proxy-header", f"{self.secret.header.decode()}: {self.secret.value.decode()}"]
+    def options(self, obfuscate=False): return ["--proxy-header", f"{self.secret.header.decode()}: {self.secret.value.decode() if not obfuscate else '***' }"]
+
+class ProxyAuthToken(ProxyAuth):
+
+    def options(self, obfuscate=False): return ["--proxy-header", f"{self.secret.header.decode()}: {self.secret.token.decode() if not obfuscate else '***' }"]
+

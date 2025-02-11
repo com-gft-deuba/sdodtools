@@ -1,8 +1,8 @@
 import urllib.request
 import subprocess
+import pipes
 import io
 import email
-# from http.client import HTTPMessage
 
 from .. import Cli
 
@@ -15,23 +15,29 @@ from .. import Cli
 ##############################################################################
 ##############################################################################
 
-class CurlHandler(urllib.request.HTTPHandler):
+class CurlHandler(urllib.request.BaseHandler):
 
-    def __init__(self, proxy_mapping):
+    def __init__(self, proxy_maps=None, server_auth=None):
 
-        self.proxy_mapping = proxy_mapping
+        print("INIT")
+        self.proxy_maps = proxy_maps
+        self.server_auth = server_auth
 
     def http_open(self, req):
-
+        print("XXXXXXXXXXXXXXXXXXXX")
         return self.curl_open(req, 'http')
 
     def https_open(self, req):
-
+        print("XXXXXXXXXXXXXXXXXXXX")
         return self.curl_open(req, 'https')
 
-    def curl_open(self, req, scheme):
+    def _build_curl_command(self, req, scheme, obfuscate=False):
 
         curl_command = ['curl', '--silent', '--insecure', '--include', '--request', req.get_method()]
+
+        if self.server_auth is not None:
+
+            curl_command.extend(self.server_auth.options(obfuscate=obfuscate))
 
         proxy = self._get_proxy(req.host)
 
@@ -40,7 +46,10 @@ class CurlHandler(urllib.request.HTTPHandler):
             curl_command.append('--proxy-insecure')
             curl_command.append('--suppress-connect-headers')
             curl_command.extend(['--proxy', proxy.proxy])
-            curl_command.extend(proxy.auth.options())
+
+            if proxy.auth is not None:
+                
+                curl_command.extend(proxy.auth.options(obfuscate=obfuscate))
 
         for key, value in req.headers.items():
 
@@ -48,6 +57,12 @@ class CurlHandler(urllib.request.HTTPHandler):
 
         url = f"{scheme}://{req.host}{req.selector}"
         curl_command.append(url)
+
+        return curl_command
+
+    def curl_open(self, req, scheme):
+        print("XXXXXXXXXXXXXXXXXXXX")
+        curl_command = self._build_curl_command(req, scheme, obfuscate=False)
 
         try:
 
@@ -66,9 +81,12 @@ class CurlHandler(urllib.request.HTTPHandler):
 
     def _get_proxy(self, host):
 
-        return self.proxy_mapping.get(host)
+        if self.proxy_maps is None: return None
+
+        return self.proxy_maps.get(host)
 
     def _parse_response(self, response_data, url):
+
         # Split headers and body
 
         header_data, body = response_data.split(b'\r\n\r\n', 1)
