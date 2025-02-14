@@ -1,6 +1,13 @@
+#!/usr/bin/env python
+
 import sys
 import os
 import argparse
+
+sys.path.insert(1, os.path.join(sys.path[0], 'lib'))
+sys.path.insert(1, os.path.join(sys.path[0], '../lib'))
+if 'PYTHON_HOME' in os.environ: sys.path.insert(2, os.path.join(os.environ['PYTHON_HOME'], 'lib'))
+if 'HOME' in os.environ: sys.path.insert(2, os.path.join(os.environ['HOME'], 'lib'))
 
 import sdodtools.Crypt
 import sdodtools.Cli.Utils
