@@ -94,6 +94,8 @@ class KeyIV:
 
         cmd = subprocess.Popen(args=['openssl', 'enc', '-a', '-aes-256-cbc', '-K', self.key.decode(), '-iv', self.iv.decode()], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=False)
         (stdout, stderr) = cmd.communicate(input=data)
+        stdout = stdout.replace(b'\r\n', b'').replace(b'\n', b'')
+        stderr = stdout.replace(b'\r\n', b'\n')
 
         return cmd.returncode, stdout, stderr
 
@@ -102,5 +104,7 @@ class KeyIV:
         data += b'\n'
         cmd = subprocess.Popen(args=['openssl', 'enc', '-d', '-a', '-aes-256-cbc', '-K', self.key.decode(), '-iv', self.iv.decode()], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=False)
         (stdout, stderr) = cmd.communicate(input=data)
+        stdout = stdout.replace(b'\r\n', b'').replace(b'\n', b'')
+        stderr = stdout.replace(b'\r\n', b'\n')
 
         return cmd.returncode, stdout, stderr
