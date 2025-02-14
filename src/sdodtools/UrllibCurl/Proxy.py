@@ -39,3 +39,5 @@ class ProxyMaps:
 
             if p.match(host): return p
 
+        return None
+
