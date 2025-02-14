@@ -4,6 +4,7 @@ import sys
 import os
 import argparse
 
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 sys.path.insert(1, os.path.join(sys.path[0], 'lib'))
 sys.path.insert(1, os.path.join(sys.path[0], '../lib'))
 if 'PYTHON_HOME' in os.environ: sys.path.insert(2, os.path.join(os.environ['PYTHON_HOME'], 'lib'))
@@ -74,7 +75,7 @@ def main(argv=None):
     subparser_create_token.add_argument('domain', type=str, default=None, help='Domain of the secret')
     subparser_create_token.add_argument('name', type=str, default=None, help='Name of the secret')
     subparser_create_token.add_argument('header', type=str, default=None, help='Header of the token')
-    subparser_create_token.add_argument('value', type=str, default=None, help='Value of the token')
+    subparser_create_token.add_argument('token', type=str, default=None, help='Value of the token')
 
     args = parser.parse_args(args=argv[1:])
     basedir = args.basedir
@@ -142,12 +143,16 @@ def main(argv=None):
 
     if args.cmd == 'list':
 
-        secret_list = sdodtools.Crypt.Secrets.SecretFactory.find_secrets(
+        key_info, secret_list = sdodtools.Crypt.Secrets.SecretFactory.find_secrets(
                 basedir=args.basedir,
                 prefix=args.prefix
             )
         secret_list.sort(key=lambda x: (x.domain, x.name, x.category))
         max_len_filename = 0
+
+        if key_info is not None:
+
+            max_len_filename = len(secret)
 
         for secret_info in secret_list:
 
@@ -174,7 +179,7 @@ def main(argv=None):
 
             try:
 
-                container = sdodtools.Crypt.Secrets.SecretFactory.load(filename=secret_info.path, key=key)
+                container = sdodtools.Crypt.Secrets.SecretFactory.load(fileinfo=secret_info.path, key=key)
 
             except: pass
 
@@ -280,8 +285,8 @@ def main(argv=None):
         if args.category == 'token':
 
             header = args.header.encode()
-            value = args.value.encode()
-            token = sdodtools.Crypt.Secrets.Token.from_key(key=key, domain=args.domain, name=args.name, category='token', header=header, value=value) 
+            token = args.token.encode()
+            token = sdodtools.Crypt.Secrets.Token.from_key(key=key, domain=args.domain, name=args.name, category='token', header=header, token=token) 
             print(token)
             filename = sdodtools.Crypt.Secrets.SecretFactory.save(secret=token, basedir=basedir, prefix=prefix, overwrite=args.overwrite)  
             print('Token saved to {filename}'.format(filename=filename))

@@ -3,3 +3,4 @@
 dist
 *.egg-info
 src/__init__.py
+*.bak
