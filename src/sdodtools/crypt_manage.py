@@ -210,14 +210,12 @@ def main(argv=None):
             else:
 
                 text = str(secret)
-
+          
             print('{title:<{title_len}} : {text}'.format(
                 title=secret_info.filename,
                 title_len=max_len_filename,
                 text=text
             ))
-
-        sys.exit(0)
 
     if key is None:
 
