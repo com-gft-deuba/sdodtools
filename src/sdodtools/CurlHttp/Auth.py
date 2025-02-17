@@ -102,3 +102,14 @@ class ProxyAuthToken(ProxyAuth):
 
     def options(self, obfuscate=False): return ["--proxy-header", f"{self.secret.header.decode()}: {self.secret.token.decode() if not obfuscate else '***' }"]
 
+##############################################################################
+##############################################################################
+
+class NoAuth(ServerAuth, ProxyAuth):
+
+    def __init__(self) -> None:
+
+        pass
+
+    def options(self, obfuscate=False): return []
+
